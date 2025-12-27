@@ -9,10 +9,12 @@ class MTGApp {
         this.uploadedFiles = [];
         this.results = [];
         this.trainingData = { trainingExamples: [] };
+        this.inventory = new Set(); // Set of owned card names (normalized)
         
         this.initializeElements();
         this.setupEventListeners();
         this.loadTrainingData();
+        this.loadInventory();
     }
 
     initializeElements() {
@@ -23,16 +25,21 @@ class MTGApp {
         this.progressFill = document.getElementById('progressFill');
         this.progressText = document.getElementById('progressText');
         this.resultsSection = document.getElementById('resultsSection');
-        this.identifiedGrid = document.getElementById('identifiedGrid');
+        this.wantedGrid = document.getElementById('wantedGrid');
+        this.ownedGrid = document.getElementById('ownedGrid');
         this.unidentifiedGrid = document.getElementById('unidentifiedGrid');
-        this.identifiedCount = document.getElementById('identifiedCount');
+        this.wantedCount = document.getElementById('wantedCount');
+        this.ownedCount = document.getElementById('ownedCount');
         this.unidentifiedCount = document.getElementById('unidentifiedCount');
-        this.downloadIdentifiedBtn = document.getElementById('downloadIdentifiedBtn');
+        this.downloadWantedBtn = document.getElementById('downloadWantedBtn');
+        this.downloadOwnedBtn = document.getElementById('downloadOwnedBtn');
         this.downloadUnidentifiedBtn = document.getElementById('downloadUnidentifiedBtn');
         this.downloadTrainingBtn = document.getElementById('downloadTrainingBtn');
         this.trainingCount = document.getElementById('trainingCount');
         this.importTrainingInput = document.getElementById('importTrainingInput');
         this.showTrainingStatsBtn = document.getElementById('showTrainingStatsBtn');
+        this.importInventoryInput = document.getElementById('importInventoryInput');
+        this.inventoryCount = document.getElementById('inventoryCount');
     }
 
     setupEventListeners() {
@@ -94,7 +101,8 @@ class MTGApp {
         });
         
         // Download buttons
-        this.downloadIdentifiedBtn.addEventListener('click', () => this.downloadImages('identified'));
+        this.downloadWantedBtn.addEventListener('click', () => this.downloadImages('wanted'));
+        this.downloadOwnedBtn.addEventListener('click', () => this.downloadImages('owned'));
         this.downloadUnidentifiedBtn.addEventListener('click', () => this.downloadImages('unidentified'));
         this.downloadTrainingBtn.addEventListener('click', () => this.saveTrainingData());
         
@@ -125,6 +133,182 @@ class MTGApp {
                 this.showTrainingStats();
             });
         }
+        
+        // Import inventory
+        if (this.importInventoryInput) {
+            this.importInventoryInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const count = await this.importInventory(file);
+                        alert(`Successfully imported ${count} cards to inventory!`);
+                        // Re-categorize existing results if any
+                        if (this.results.length > 0) {
+                            this.displayResults();
+                        }
+                    } catch (error) {
+                        alert(`Error importing inventory: ${error.message}`);
+                    }
+                    // Reset input
+                    e.target.value = '';
+                }
+            });
+        }
+    }
+    
+    /**
+     * Normalize card name for comparison (lowercase, trim)
+     */
+    normalizeCardName(cardName) {
+        if (!cardName) return '';
+        return cardName.toLowerCase().trim();
+    }
+    
+    /**
+     * Check if a card is in the inventory
+     */
+    isCardOwned(cardName) {
+        if (!cardName || this.inventory.size === 0) return false;
+        const normalized = this.normalizeCardName(cardName);
+        return this.inventory.has(normalized);
+    }
+    
+    /**
+     * Load inventory from localStorage
+     */
+    loadInventory() {
+        try {
+            const stored = localStorage.getItem('mtg-inventory');
+            if (stored) {
+                const cardNames = JSON.parse(stored);
+                this.inventory = new Set(cardNames.map(name => this.normalizeCardName(name)));
+                this.updateInventoryCount();
+                console.log(`Loaded ${this.inventory.size} cards from inventory`);
+            } else {
+                this.inventory = new Set();
+                this.updateInventoryCount();
+            }
+        } catch (error) {
+            console.warn('Could not load inventory from localStorage:', error);
+            this.inventory = new Set();
+            this.updateInventoryCount();
+        }
+    }
+    
+    /**
+     * Save inventory to localStorage
+     */
+    saveInventory() {
+        try {
+            const cardNames = Array.from(this.inventory);
+            localStorage.setItem('mtg-inventory', JSON.stringify(cardNames));
+            console.log(`Saved ${this.inventory.size} cards to inventory`);
+        } catch (error) {
+            console.warn('Could not save inventory to localStorage:', error);
+        }
+    }
+    
+    /**
+     * Update inventory count display
+     */
+    updateInventoryCount() {
+        if (this.inventoryCount) {
+            const uniqueCount = this.inventory.size;
+            this.inventoryCount.textContent = `${uniqueCount} unique card${uniqueCount !== 1 ? 's' : ''} in inventory`;
+        }
+    }
+    
+    /**
+     * Parse a CSV line, handling quoted values
+     */
+    parseCSVLine(line) {
+        const columns = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    // Escaped quote
+                    current += '"';
+                    i++; // Skip next quote
+                } else {
+                    // Toggle quote state
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                // End of column
+                columns.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // Add the last column
+        columns.push(current);
+        
+        return columns;
+    }
+    
+    /**
+     * Import inventory from CSV file
+     */
+    importInventory(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csvText = e.target.result;
+                    const lines = csvText.split('\n');
+                    const cardNames = new Set();
+                    
+                    // Parse CSV - first column is quantity (ignore), second column is card name
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue; // Skip empty lines
+                        
+                        // Parse CSV line - handle quoted values properly
+                        const columns = this.parseCSVLine(line);
+                        
+                        // Skip header row if it looks like a header (first column is "Qty", "Quantity", etc.)
+                        if (i === 0 && columns.length > 0) {
+                            const firstCol = columns[0].toLowerCase().trim();
+                            if (firstCol === 'qty' || firstCol === 'quantity' || firstCol === 'count') {
+                                continue; // Skip header row
+                            }
+                        }
+                        
+                        // Second column (index 1) is the card name
+                        if (columns.length >= 2) {
+                            const cardName = columns[1].trim();
+                            if (cardName) {
+                                cardNames.add(this.normalizeCardName(cardName));
+                            }
+                        } else if (columns.length === 1) {
+                            // Fallback: if only one column, treat it as card name (for backwards compatibility)
+                            const cardName = columns[0].trim();
+                            if (cardName) {
+                                cardNames.add(this.normalizeCardName(cardName));
+                            }
+                        }
+                    }
+                    
+                    // Update inventory
+                    this.inventory = cardNames;
+                    this.saveInventory();
+                    this.updateInventoryCount();
+                    
+                    resolve(this.inventory.size);
+                } catch (error) {
+                    reject(new Error(`Failed to parse CSV: ${error.message}`));
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
     }
     
     showTrainingStats() {
@@ -523,23 +707,48 @@ class MTGApp {
     }
 
     displayResults() {
-        const identified = this.results.filter(r => r.identified);
-        const unidentified = this.results.filter(r => !r.identified);
+        // Categorize results
+        const wanted = []; // Identified but not owned
+        const owned = []; // Identified and owned
+        const unidentified = []; // Not identified
+        
+        this.results.forEach(result => {
+            if (result.identified && result.cardName) {
+                if (this.isCardOwned(result.cardName)) {
+                    owned.push(result);
+                } else {
+                    wanted.push(result);
+                }
+            } else {
+                unidentified.push(result);
+            }
+        });
         
         // Update counts
-        this.identifiedCount.textContent = identified.length;
+        this.wantedCount.textContent = wanted.length;
+        this.ownedCount.textContent = owned.length;
         this.unidentifiedCount.textContent = unidentified.length;
         
         // Clear grids
-        this.identifiedGrid.innerHTML = '';
+        this.wantedGrid.innerHTML = '';
+        this.ownedGrid.innerHTML = '';
         this.unidentifiedGrid.innerHTML = '';
         
-        // Display identified cards
-        if (identified.length === 0) {
-            this.identifiedGrid.innerHTML = '<div class="empty-state"><p>No cards identified</p></div>';
+        // Display wanted cards (identified but not owned)
+        if (wanted.length === 0) {
+            this.wantedGrid.innerHTML = '<div class="empty-state"><p>No wanted cards</p></div>';
         } else {
-            identified.forEach(result => {
-                this.createCardElement(result, this.identifiedGrid);
+            wanted.forEach(result => {
+                this.createCardElement(result, this.wantedGrid);
+            });
+        }
+        
+        // Display owned cards (identified and owned)
+        if (owned.length === 0) {
+            this.ownedGrid.innerHTML = '<div class="empty-state"><p>No owned cards</p></div>';
+        } else {
+            owned.forEach(result => {
+                this.createCardElement(result, this.ownedGrid);
             });
         }
         
@@ -843,9 +1052,18 @@ class MTGApp {
     }
 
     async downloadImages(type) {
-        const filtered = type === 'identified' 
-            ? this.results.filter(r => r.identified)
-            : this.results.filter(r => !r.identified);
+        let filtered = [];
+        
+        if (type === 'wanted') {
+            // Identified but not owned
+            filtered = this.results.filter(r => r.identified && r.cardName && !this.isCardOwned(r.cardName));
+        } else if (type === 'owned') {
+            // Identified and owned
+            filtered = this.results.filter(r => r.identified && r.cardName && this.isCardOwned(r.cardName));
+        } else if (type === 'unidentified') {
+            // Not identified
+            filtered = this.results.filter(r => !r.identified);
+        }
         
         if (filtered.length === 0) {
             alert(`No ${type} images to download.`);

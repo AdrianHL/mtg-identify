@@ -10,8 +10,20 @@
     <div class="container">
         <header>
             <h1>🎴 MTG Card Identifier</h1>
-            <p>Upload screenshots of Magic: The Gathering cards - extracts card names from the top portion</p>
+            <p>Upload your card inventory (CSV) and screenshots of Magic: The Gathering cards - automatically categorizes cards as Wanted or Owned</p>
         </header>
+
+        <div class="inventory-section" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #333;">Card Inventory:</strong>
+                <span id="inventoryCount" style="margin-left: 10px; color: #28a745; font-weight: bold;">0 unique cards in inventory</span>
+            </div>
+            <label for="importInventoryInput" style="display: inline-block; padding: 8px 16px; background: #28a745; color: white; border-radius: 5px; cursor: pointer; font-size: 0.9em;">
+                📋 Upload Inventory (CSV)
+            </label>
+            <input type="file" id="importInventoryInput" accept=".csv" style="display: none;">
+            <p style="margin-top: 8px; font-size: 0.85em; color: #666;">CSV format: quantity, card name (first column is quantity, second is card name)</p>
+        </div>
 
         <div class="upload-section">
             <div class="upload-area" id="uploadArea">
@@ -38,8 +50,9 @@
 
         <div class="results-section" id="resultsSection" style="display: none;">
             <div class="results-tabs">
-                <button class="tab-btn active" data-tab="identified">Identified Cards (<span id="identifiedCount">0</span>)</button>
-                <button class="tab-btn" data-tab="unidentified">Unidentified Cards (<span id="unidentifiedCount">0</span>)</button>
+                <button class="tab-btn active" data-tab="wanted">Identified and Wanted (<span id="wantedCount">0</span>)</button>
+                <button class="tab-btn" data-tab="owned">Identified and Owned (<span id="ownedCount">0</span>)</button>
+                <button class="tab-btn" data-tab="unidentified">Unidentified (<span id="unidentifiedCount">0</span>)</button>
             </div>
             <div style="text-align: center; margin: 10px 0; color: #666; font-size: 0.9em;">
                 <span id="trainingCount">0</span> training examples saved
@@ -52,8 +65,12 @@
                 </button>
             </div>
 
-            <div class="tab-content active" id="identifiedTab">
-                <div class="cards-grid" id="identifiedGrid"></div>
+            <div class="tab-content active" id="wantedTab">
+                <div class="cards-grid" id="wantedGrid"></div>
+            </div>
+
+            <div class="tab-content" id="ownedTab">
+                <div class="cards-grid" id="ownedGrid"></div>
             </div>
 
             <div class="tab-content" id="unidentifiedTab">
@@ -61,7 +78,8 @@
             </div>
 
                 <div class="download-section">
-                    <button id="downloadIdentifiedBtn" class="download-btn">Download Identified Images</button>
+                    <button id="downloadWantedBtn" class="download-btn">Download Wanted Images</button>
+                    <button id="downloadOwnedBtn" class="download-btn">Download Owned Images</button>
                     <button id="downloadUnidentifiedBtn" class="download-btn">Download Unidentified Images</button>
                     <button id="downloadTrainingBtn" class="download-btn" style="background: #28a745;">Download Training Data</button>
                 </div>

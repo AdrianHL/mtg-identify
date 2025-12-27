@@ -5,12 +5,14 @@ A browser-based image recognition tool for identifying Magic: The Gathering card
 ## Features
 
 - 📸 Upload multiple card images at once
+- 📋 **Card Inventory Management** - Upload your collection (CSV) to automatically categorize cards as Wanted or Owned
 - 🔍 Automatic card identification using OCR and image analysis
 - 🎯 **Fuzzy matching** against known card names to correct OCR errors
-- 📊 Categorizes results into identified and unidentified cards
-- 💾 Download identified and unidentified images separately
+- 📊 Categorizes results into three categories: **Wanted** (identified but not owned), **Owned** (identified and in inventory), and **Unidentified**
+- 💾 Download wanted, owned, and unidentified images separately
 - 🎨 Modern, user-friendly interface
 - 🌐 Runs entirely in the browser - no backend required
+- 💾 **LocalStorage persistence** - Your inventory and training data are saved locally
 
 ## How It Works
 
@@ -23,13 +25,20 @@ The tool uses:
 ## Usage
 
 1. **Open the application**: Simply open `index.html` in a modern web browser
-2. **Upload images**: Click the upload area or drag and drop card images
-3. **Process**: Click "Process Images" to analyze the uploaded cards
-4. **View results**: 
-   - Switch between "Identified Cards" and "Unidentified Cards" tabs
+2. **Upload your inventory (optional but recommended)**: 
+   - Click "Upload Inventory (CSV)" to upload your card collection
+   - CSV format: `quantity, card name` (first column is quantity, second is card name)
+   - Example: `2,Lightning Bolt` or `1,Annie Joins Up`
+   - Your inventory is saved to localStorage and persists across sessions
+3. **Upload images**: Click the upload area or drag and drop card images
+4. **Process**: Click "Process Images" to analyze the uploaded cards
+5. **View results**: 
+   - **Identified and Wanted** - Cards identified but not in your inventory
+   - **Identified and Owned** - Cards identified and already in your inventory
+   - **Unidentified** - Cards that couldn't be identified
    - View card names and confidence scores
    - Click "Show OCR text" to see what was extracted
-5. **Download**: Download identified or unidentified images as needed
+6. **Download**: Download wanted, owned, or unidentified images separately
 
 ## Improving Accuracy with Card Name Database
 
@@ -97,7 +106,10 @@ You can integrate with Scryfall API to get all card names dynamically. See `card
 1. Image validation - Checks if image matches MTG card characteristics
 2. OCR extraction - Attempts to read card name from image (top-left area)
 3. Fuzzy matching - Matches OCR text against known card names to correct errors
-4. Result categorization - Separates identified from unidentified cards
+4. Result categorization - Separates cards into three categories:
+   - **Wanted**: Identified but not in inventory
+   - **Owned**: Identified and in inventory
+   - **Unidentified**: Could not be identified
 
 ## Limitations
 
@@ -107,15 +119,31 @@ You can integrate with Scryfall API to get all card names dynamically. See `card
 - May not identify cards with obscured or stylized text
 - Fuzzy matching requires cards to be in the database for best results
 
+## Inventory Management
+
+The tool supports uploading your card collection as a CSV file to automatically categorize identified cards:
+
+- **CSV Format**: `quantity, card name`
+  - First column: Quantity (ignored, but required)
+  - Second column: Card name (used for matching)
+  - Example: `2,Lightning Bolt` or `1,Annie Joins Up`
+- **Header Row**: Automatically detected and skipped (supports "Qty", "Quantity", "Count")
+- **Storage**: Inventory is saved to localStorage and persists across sessions
+- **Unique Cards**: The system counts unique card names (duplicates are automatically handled)
+
+When you process images, identified cards are automatically sorted into:
+- **Wanted**: Cards you don't own yet
+- **Owned**: Cards already in your inventory
+
 ## Future Enhancements
 
 Potential improvements:
-- Integration with Scryfall API for comprehensive card database
+- Integration with Scryfall API for comprehensive card database (already partially implemented)
 - Machine learning model for visual card recognition
 - Support for multiple card formats and languages
 - Batch processing optimizations
 - Card metadata display (set, rarity, etc.)
-- User feedback system to learn from corrections
+- Export inventory to CSV
 
 ## Training/Improving the System
 
