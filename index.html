@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTG Card Identifier</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎴 MTG Card Identifier</h1>
+            <p>Upload screenshots of Magic: The Gathering cards - extracts card names from the top portion</p>
+        </header>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" multiple accept="image/*" hidden>
+                <div class="upload-content">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Click to upload or drag and drop images</p>
+                    <p class="upload-hint">Supports multiple images</p>
+                </div>
+            </div>
+            <button id="processBtn" class="process-btn" disabled>Process Images</button>
+        </div>
+
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="progress-text" id="progressText">Processing...</p>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-tabs">
+                <button class="tab-btn active" data-tab="identified">Identified Cards (<span id="identifiedCount">0</span>)</button>
+                <button class="tab-btn" data-tab="unidentified">Unidentified Cards (<span id="unidentifiedCount">0</span>)</button>
+            </div>
+            <div style="text-align: center; margin: 10px 0; color: #666; font-size: 0.9em;">
+                <span id="trainingCount">0</span> training examples saved
+                <label for="importTrainingInput" style="margin-left: 15px; cursor: pointer; color: #667eea; text-decoration: underline;">
+                    Import Training Data
+                </label>
+                <input type="file" id="importTrainingInput" accept=".json" style="display: none;">
+                <button id="showTrainingStatsBtn" style="margin-left: 15px; padding: 4px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
+                    Show Training Stats
+                </button>
+            </div>
+
+            <div class="tab-content active" id="identifiedTab">
+                <div class="cards-grid" id="identifiedGrid"></div>
+            </div>
+
+            <div class="tab-content" id="unidentifiedTab">
+                <div class="cards-grid" id="unidentifiedGrid"></div>
+            </div>
+
+                <div class="download-section">
+                    <button id="downloadIdentifiedBtn" class="download-btn">Download Identified Images</button>
+                    <button id="downloadUnidentifiedBtn" class="download-btn">Download Unidentified Images</button>
+                    <button id="downloadTrainingBtn" class="download-btn" style="background: #28a745;">Download Training Data</button>
+                </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="training-helper.js"></script>
+    <script src="border-detector.js"></script>
+    <script src="card-name-matcher.js"></script>
+    <script src="card-recognition.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,18 @@
+{
+  "trainingExamples": [
+    {
+      "imageName": "example1.jpg",
+      "ocrText": "Ll Scourge of the Throne Dee",
+      "expectedCardName": "Scourge of the Throne",
+      "notes": "Has leading 'Ll' and trailing 'Dee' artifacts"
+    },
+    {
+      "imageName": "example2.jpg",
+      "ocrText": "i Ce | olla % T A ba",
+      "expectedCardName": "Evercoat Ursine",
+      "notes": "Heavily corrupted OCR text"
+    }
+  ],
+  "instructions": "Add your test cases here. The system will use these to improve matching accuracy."
+}
+
