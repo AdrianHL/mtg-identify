@@ -2,14 +2,19 @@
 
 A browser-based image recognition tool for identifying Magic: The Gathering cards from screenshots. This tool runs entirely in the browser without requiring any server, Docker, or additional dependencies.
 
+🌐 **Live Demo**: [https://mtg-identity.netlify.app/](https://mtg-identity.netlify.app/)  
+📦 **Repository**: [https://github.com/AdrianHL/mtg-identify](https://github.com/AdrianHL/mtg-identify)
+
 ## Features
 
 - 📸 Upload multiple card images at once
-- 📋 **Card Inventory Management** - Upload your collection (CSV) to automatically categorize cards as Wanted or Owned
+- 📋 **Card Inventory Management** - Upload your collection (CSV) to automatically categorize cards
+- 📝 **Wantlist Management** - Upload multiple wantlist CSV files with drag-and-drop support
 - 🔍 Automatic card identification using OCR and image analysis
 - 🎯 **Fuzzy matching** against known card names to correct OCR errors
-- 📊 Categorizes results into three categories: **Wanted** (identified but not owned), **Owned** (identified and in inventory), and **Unidentified**
-- 💾 Download wanted, owned, and unidentified images separately
+- 📊 Categorizes results into five categories: **In Wantlist** (in wantlist only), **In Wantlist & Inventory** (in both - should be removed from wantlist), **Wanted** (not in wantlist/inventory), **Owned** (in inventory only), and **Unidentified**
+- 💾 Download in-wantlist, in-both, wanted, owned, and unidentified images separately
+- 🎨 Visual indicators: Yellow/orange warning for cards in both inventory and wantlist, green success for cards only in wantlist
 - 🎨 Modern, user-friendly interface
 - 🌐 Runs entirely in the browser - no backend required
 - 💾 **LocalStorage persistence** - Your inventory and training data are saved locally
@@ -30,15 +35,23 @@ The tool uses:
    - CSV format: `quantity, card name` (first column is quantity, second is card name)
    - Example: `2,Lightning Bolt` or `1,Annie Joins Up`
    - Your inventory is saved to localStorage and persists across sessions
-3. **Upload images**: Click the upload area or drag and drop card images
-4. **Process**: Click "Process Images" to analyze the uploaded cards
-5. **View results**: 
-   - **Identified and Wanted** - Cards identified but not in your inventory
-   - **Identified and Owned** - Cards identified and already in your inventory
+3. **Upload your wantlists (optional)**: 
+   - Drag and drop or click to select multiple CSV files
+   - Same CSV format: `quantity, card name`
+   - Each file represents a separate wantlist
+   - View summary modal after upload showing all wantlists and card counts
+   - Wantlists are saved to localStorage and persist across sessions
+4. **Upload images**: Click the upload area or drag and drop card images
+5. **Process**: Click "Process Images" to analyze the uploaded cards
+6. **View results**: 
+   - **In Wantlist** - Cards identified and in your wantlist(s) but NOT in inventory (green highlight ✓ - still needed)
+   - **In Wantlist & Inventory** - Cards in both your wantlist(s) and inventory (yellow/orange highlight ⚠ - should be removed from wantlist)
+   - **Wanted (Not in Wantlist)** - Cards identified but not in any wantlist or inventory
+   - **Owned** - Cards identified and in your inventory but NOT in any wantlist
    - **Unidentified** - Cards that couldn't be identified
-   - View card names and confidence scores
+   - View card names, confidence scores, and which wantlists contain each card
    - Click "Show OCR text" to see what was extracted
-6. **Download**: Download wanted, owned, or unidentified images separately
+7. **Download**: Download in-wantlist, in-both, wanted, owned, or unidentified images separately
 
 ## Improving Accuracy with Card Name Database
 
@@ -91,10 +104,14 @@ You can integrate with Scryfall API to get all card names dynamically. See `card
 ### Files Structure
 
 - `index.html` - Main HTML structure
-- `styles.css` - Styling and layout
+- `styles.css` - Styling and layout (all CSS classes, no inline styles)
 - `app.js` - Application logic and UI handling
 - `card-recognition.js` - Card recognition engine
 - `card-name-matcher.js` - Fuzzy matching system for correcting OCR errors
+- `border-detector.js` - Black border detection for card content extraction
+- `training-helper.js` - Training system helper functions
+- `mtg-card-icon.svg` - MTG card back icon (classic design)
+- `training-data.json` - Training examples for improving accuracy (optional)
 
 ### Dependencies (loaded via CDN)
 
@@ -106,9 +123,11 @@ You can integrate with Scryfall API to get all card names dynamically. See `card
 1. Image validation - Checks if image matches MTG card characteristics
 2. OCR extraction - Attempts to read card name from image (top-left area)
 3. Fuzzy matching - Matches OCR text against known card names to correct errors
-4. Result categorization - Separates cards into three categories:
-   - **Wanted**: Identified but not in inventory
-   - **Owned**: Identified and in inventory
+4. Result categorization - Separates cards into five categories:
+   - **In Wantlist**: Identified and in wantlist but NOT in inventory (green ✓ - still needed)
+   - **In Wantlist & Inventory**: Identified and in BOTH wantlist and inventory (yellow/orange ⚠ - should be removed from wantlist)
+   - **Wanted**: Identified but not in wantlist or inventory
+   - **Owned**: Identified and in inventory but NOT in wantlist
    - **Unidentified**: Could not be identified
 
 ## Limitations
@@ -119,21 +138,43 @@ You can integrate with Scryfall API to get all card names dynamically. See `card
 - May not identify cards with obscured or stylized text
 - Fuzzy matching requires cards to be in the database for best results
 
-## Inventory Management
+## Inventory and Wantlist Management
 
-The tool supports uploading your card collection as a CSV file to automatically categorize identified cards:
+The tool supports uploading both your card collection (inventory) and wantlists as CSV files:
 
+### Inventory
 - **CSV Format**: `quantity, card name`
   - First column: Quantity (ignored, but required)
   - Second column: Card name (used for matching)
   - Example: `2,Lightning Bolt` or `1,Annie Joins Up`
 - **Header Row**: Automatically detected and skipped (supports "Qty", "Quantity", "Count")
-- **Storage**: Inventory is saved to localStorage and persists across sessions
+- **Storage**: Saved to localStorage and persists across sessions
 - **Unique Cards**: The system counts unique card names (duplicates are automatically handled)
 
+### Wantlists
+- **Multiple Files**: Upload multiple CSV files, each representing a separate wantlist
+- **Same CSV Format**: `quantity, card name` (same as inventory)
+- **Drag and Drop**: Supports drag-and-drop for multiple files at once
+- **File Tracking**: Tracks which wantlist files contain each card
+- **Summary Modal**: Shows a summary table after upload with file names and card counts
+- **Storage**: Saved to localStorage and persists across sessions
+- **Clear Function**: Button to clear all wantlists
+
+### Categorization Logic
+
 When you process images, identified cards are automatically sorted into:
-- **Wanted**: Cards you don't own yet
-- **Owned**: Cards already in your inventory
+- **In Wantlist**: Cards in your wantlist(s) but NOT in inventory
+  - **Green highlighting** (✓): Indicates you still need these cards
+  - Shows which wantlist files contain each card
+- **In Wantlist & Inventory**: Cards in BOTH your wantlist(s) and inventory
+  - **Yellow/Orange highlighting** (⚠): Warning that these should be removed from your wantlist since you already own them
+  - Shows which wantlist files contain each card
+  - Separate category makes it easy to identify cards that need cleanup
+- **Wanted (Not in Wantlist)**: Cards not in any wantlist or inventory
+- **Owned**: Cards in your inventory but NOT in any wantlist
+- **Unidentified**: Cards that couldn't be identified
+
+**Note**: Cards in both inventory and wantlist are placed in their own separate category ("In Wantlist & Inventory") with yellow/orange warning styling to make it easy to identify and remove them from your wantlists.
 
 ## Future Enhancements
 

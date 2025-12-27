@@ -1,0 +1,58 @@
+<svg viewBox="0 0 63 88" xmlns="http://www.w3.org/2000/svg">
+    <!-- Dark outer border -->
+    <rect x="0" y="0" width="63" height="88" rx="4" ry="4" fill="#0a0a0a"/>
+    
+    <!-- Metallic inner border -->
+    <rect x="3" y="3" width="57" height="82" rx="3" ry="3" fill="none" stroke="#8b6914" stroke-width="1.2"/>
+    
+    <!-- Corner rivets/gems (orange-red) -->
+    <circle cx="6" cy="6" r="1.5" fill="#d2691e"/>
+    <circle cx="57" cy="6" r="1.5" fill="#d2691e"/>
+    <circle cx="6" cy="82" r="1.5" fill="#d2691e"/>
+    <circle cx="57" cy="82" r="1.5" fill="#d2691e"/>
+    
+    <!-- Central brownish-orange oval (aged leather/parchment) -->
+    <ellipse cx="31.5" cy="44" rx="22" ry="32" fill="#8b4513"/>
+    <ellipse cx="31.5" cy="44" rx="22" ry="32" fill="url(#parchment-texture)"/>
+    
+    <!-- "MAGIC" text (metallic blue, large blocky font) -->
+    <text x="31.5" y="28" font-family="Arial, sans-serif" font-size="7" font-weight="bold" fill="#4169e1" text-anchor="middle" opacity="0.95">MAGIC</text>
+    
+    <!-- "The Gathering" text (smaller serif) -->
+    <text x="31.5" y="35" font-family="serif" font-size="3.5" fill="#8b6914" text-anchor="middle" opacity="0.85">The Gathering</text>
+    
+    <!-- Mana symbols in pentagon arrangement (simplified for clarity) -->
+    <!-- White mana (top) -->
+    <circle cx="31.5" cy="42" r="3" fill="#fff" stroke="#8b7355" stroke-width="0.4"/>
+    <path d="M31.5 40 L32.2 41.5 L33.5 41.5 L32.6 42.5 L33 44 L31.5 43.2 L30 44 L30.4 42.5 L29.5 41.5 L30.8 41.5 Z" fill="#ffd700"/>
+    
+    <!-- Blue mana (top-left) -->
+    <circle cx="25.5" cy="45.5" r="3" fill="#4169e1" stroke="#1e3a8a" stroke-width="0.4"/>
+    <path d="M25.5 43.5 L26.2 45 L27.5 45 L26.6 46 L27 47.5 L25.5 46.7 L24 47.5 L24.4 46 L23.5 45 L24.8 45 Z" fill="#87ceeb"/>
+    
+    <!-- Black mana (top-right) -->
+    <circle cx="37.5" cy="45.5" r="3" fill="#1a1a1a" stroke="#000" stroke-width="0.4"/>
+    <circle cx="37.5" cy="45.5" r="1.8" fill="#2a2a2a"/>
+    <path d="M37.5 43.8 L38 45 L39 45 L38.3 45.8 L38.5 47 L37.5 46.3 L36.5 47 L36.7 45.8 L36 45 L37 45 Z" fill="#666"/>
+    
+    <!-- Red mana (bottom-left) -->
+    <circle cx="26.5" cy="51" r="3" fill="#dc143c" stroke="#8b0000" stroke-width="0.4"/>
+    <path d="M26.5 49 L27.2 50.5 L28.5 50.5 L27.6 51.5 L28 53 L26.5 52.2 L25 53 L25.4 51.5 L24.5 50.5 L25.8 50.5 Z" fill="#ff6347"/>
+    
+    <!-- Green mana (bottom-right) -->
+    <circle cx="36.5" cy="51" r="3" fill="#228b22" stroke="#006400" stroke-width="0.4"/>
+    <path d="M36.5 49.5 L37 50.8 L38 50.8 L37.3 51.6 L37.5 52.8 L36.5 52.1 L35.5 52.8 L35.7 51.6 L35 50.8 L36 50.8 Z" fill="#90ee90"/>
+    
+    <!-- "DECKMASTER" text (metallic silver/grey) -->
+    <text x="31.5" y="60" font-family="Arial, sans-serif" font-size="4.5" font-weight="bold" fill="#c0c0c0" text-anchor="middle" opacity="0.9">DECKMASTER</text>
+    
+    <!-- Texture pattern definition for parchment effect -->
+    <defs>
+        <pattern id="parchment-texture" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.3" fill="#654321" opacity="0.15"/>
+            <circle cx="3" cy="3" r="0.3" fill="#654321" opacity="0.15"/>
+            <circle cx="2" cy="3.5" r="0.2" fill="#654321" opacity="0.1"/>
+        </pattern>
+    </defs>
+</svg>
+

@@ -88,3 +88,4 @@ If you notice consistent OCR errors, you can help the system by:
 2. Adding more examples with those patterns
 3. The system will automatically learn to handle them
 
+

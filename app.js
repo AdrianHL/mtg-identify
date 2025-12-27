@@ -10,11 +10,14 @@ class MTGApp {
         this.results = [];
         this.trainingData = { trainingExamples: [] };
         this.inventory = new Set(); // Set of owned card names (normalized)
+        this.wantlist = new Set(); // Set of wanted card names (normalized)
+        this.wantlistFiles = new Map(); // Map of filename -> Set of card names (to track which files contributed)
         
         this.initializeElements();
         this.setupEventListeners();
         this.loadTrainingData();
         this.loadInventory();
+        this.loadWantlist();
     }
 
     initializeElements() {
@@ -25,12 +28,18 @@ class MTGApp {
         this.progressFill = document.getElementById('progressFill');
         this.progressText = document.getElementById('progressText');
         this.resultsSection = document.getElementById('resultsSection');
+        this.inWantlistGrid = document.getElementById('inWantlistGrid');
+        this.inBothGrid = document.getElementById('inBothGrid');
         this.wantedGrid = document.getElementById('wantedGrid');
         this.ownedGrid = document.getElementById('ownedGrid');
         this.unidentifiedGrid = document.getElementById('unidentifiedGrid');
+        this.inWantlistCount = document.getElementById('inWantlistCount');
+        this.inBothCount = document.getElementById('inBothCount');
         this.wantedCount = document.getElementById('wantedCount');
         this.ownedCount = document.getElementById('ownedCount');
         this.unidentifiedCount = document.getElementById('unidentifiedCount');
+        this.downloadInWantlistBtn = document.getElementById('downloadInWantlistBtn');
+        this.downloadInBothBtn = document.getElementById('downloadInBothBtn');
         this.downloadWantedBtn = document.getElementById('downloadWantedBtn');
         this.downloadOwnedBtn = document.getElementById('downloadOwnedBtn');
         this.downloadUnidentifiedBtn = document.getElementById('downloadUnidentifiedBtn');
@@ -40,6 +49,16 @@ class MTGApp {
         this.showTrainingStatsBtn = document.getElementById('showTrainingStatsBtn');
         this.importInventoryInput = document.getElementById('importInventoryInput');
         this.inventoryCount = document.getElementById('inventoryCount');
+        this.importWantlistInput = document.getElementById('importWantlistInput');
+        this.wantlistUploadArea = document.getElementById('wantlistUploadArea');
+        this.wantlistCount = document.getElementById('wantlistCount');
+        this.wantlistFilesElement = document.getElementById('wantlistFiles');
+        this.clearWantlistBtn = document.getElementById('clearWantlistBtn');
+        this.viewWantlistSummaryBtn = document.getElementById('viewWantlistSummaryBtn');
+        this.wantlistSummaryModal = document.getElementById('wantlistSummaryModal');
+        this.wantlistSummaryContent = document.getElementById('wantlistSummaryContent');
+        this.closeWantlistModalBtn = document.getElementById('closeWantlistModalBtn');
+        this.viewWantlistDetailsBtn = document.getElementById('viewWantlistDetailsBtn');
     }
 
     setupEventListeners() {
@@ -101,6 +120,8 @@ class MTGApp {
         });
         
         // Download buttons
+        this.downloadInWantlistBtn.addEventListener('click', () => this.downloadImages('inWantlist'));
+        this.downloadInBothBtn.addEventListener('click', () => this.downloadImages('inBoth'));
         this.downloadWantedBtn.addEventListener('click', () => this.downloadImages('wanted'));
         this.downloadOwnedBtn.addEventListener('click', () => this.downloadImages('owned'));
         this.downloadUnidentifiedBtn.addEventListener('click', () => this.downloadImages('unidentified'));
@@ -151,6 +172,102 @@ class MTGApp {
                     }
                     // Reset input
                     e.target.value = '';
+                }
+            });
+        }
+        
+        // Wantlist summary modal
+        if (this.closeWantlistModalBtn) {
+            this.closeWantlistModalBtn.addEventListener('click', () => {
+                this.hideWantlistSummaryModal();
+            });
+        }
+        
+        if (this.wantlistSummaryModal) {
+            this.wantlistSummaryModal.addEventListener('click', (e) => {
+                if (e.target === this.wantlistSummaryModal) {
+                    this.hideWantlistSummaryModal();
+                }
+            });
+        }
+        
+        if (this.viewWantlistDetailsBtn) {
+            this.viewWantlistDetailsBtn.addEventListener('click', () => {
+                this.hideWantlistSummaryModal();
+                // Scroll to wantlist section
+                const wantlistSection = document.querySelector('.wantlist-section');
+                if (wantlistSection) {
+                    wantlistSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+        
+        // Wantlist drag and drop
+        if (this.wantlistUploadArea) {
+            this.wantlistUploadArea.addEventListener('click', () => {
+                this.importWantlistInput.click();
+            });
+            
+            this.wantlistUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.wantlistUploadArea.style.backgroundColor = '#fff9e6';
+            });
+            
+            this.wantlistUploadArea.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.wantlistUploadArea.style.backgroundColor = '#fff9e6';
+            });
+            
+            this.wantlistUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Only remove highlight if we're actually leaving the upload area
+                const rect = this.wantlistUploadArea.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                    this.wantlistUploadArea.style.backgroundColor = 'white';
+                }
+            });
+            
+            this.wantlistUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.wantlistUploadArea.style.backgroundColor = 'white';
+                
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    this.handleWantlistFiles(Array.from(files));
+                }
+            });
+        }
+        
+        // Import wantlist files
+        if (this.importWantlistInput) {
+            this.importWantlistInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    await this.handleWantlistFiles(files);
+                }
+                // Reset input
+                e.target.value = '';
+            });
+        }
+        
+        // View wantlist summary
+        if (this.viewWantlistSummaryBtn) {
+            this.viewWantlistSummaryBtn.addEventListener('click', () => {
+                this.showWantlistSummaryModal();
+            });
+        }
+        
+        // Clear wantlist
+        if (this.clearWantlistBtn) {
+            this.clearWantlistBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear the wantlist? This cannot be undone.')) {
+                    this.clearWantlist();
                 }
             });
         }
@@ -309,6 +426,318 @@ class MTGApp {
             reader.onerror = () => reject(new Error('Failed to read file'));
             reader.readAsText(file);
         });
+    }
+    
+    /**
+     * Handle multiple wantlist CSV files
+     */
+    async handleWantlistFiles(files) {
+        const csvFiles = files.filter(file => file.name.toLowerCase().endsWith('.csv'));
+        
+        if (csvFiles.length === 0) {
+            alert('Please select CSV files only.');
+            return;
+        }
+        
+        let totalImported = 0;
+        const errors = [];
+        
+        for (const file of csvFiles) {
+            try {
+                const count = await this.importWantlistFile(file);
+                totalImported += count;
+            } catch (error) {
+                errors.push(`${file.name}: ${error.message}`);
+            }
+        }
+        
+        if (errors.length > 0) {
+            alert(`Imported ${totalImported} cards from ${csvFiles.length - errors.length} file(s).\n\nErrors:\n${errors.join('\n')}`);
+        }
+        
+        // Show summary modal if files were successfully imported
+        if (csvFiles.length - errors.length > 0) {
+            // Small delay to ensure UI updates
+            setTimeout(() => {
+                this.showWantlistSummaryModal();
+            }, 100);
+        }
+        
+        // Re-categorize existing results if any
+        if (this.results.length > 0) {
+            this.displayResults();
+        }
+    }
+    
+    /**
+     * Import a single wantlist CSV file
+     */
+    async importWantlistFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csvText = e.target.result;
+                    const lines = csvText.split('\n');
+                    const cardNames = new Set();
+                    
+                    // Parse CSV - first column is quantity (ignore), second column is card name
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue; // Skip empty lines
+                        
+                        // Parse CSV line - handle quoted values properly
+                        const columns = this.parseCSVLine(line);
+                        
+                        // Skip header row if it looks like a header (first column is "Qty", "Quantity", etc.)
+                        if (i === 0 && columns.length > 0) {
+                            const firstCol = columns[0].toLowerCase().trim();
+                            if (firstCol === 'qty' || firstCol === 'quantity' || firstCol === 'count') {
+                                continue; // Skip header row
+                            }
+                        }
+                        
+                        // Second column (index 1) is the card name
+                        if (columns.length >= 2) {
+                            const cardName = columns[1].trim();
+                            if (cardName) {
+                                cardNames.add(this.normalizeCardName(cardName));
+                            }
+                        } else if (columns.length === 1) {
+                            // Fallback: if only one column, treat it as card name (for backwards compatibility)
+                            const cardName = columns[0].trim();
+                            if (cardName) {
+                                cardNames.add(this.normalizeCardName(cardName));
+                            }
+                        }
+                    }
+                    
+                    // Store this file's cards (replace if same filename)
+                    const fileName = file.name;
+                    this.wantlistFiles.set(fileName, cardNames);
+                    
+                    // Rebuild wantlist from all files
+                    this.rebuildWantlist();
+                    this.saveWantlist();
+                    this.updateWantlistCount();
+                    this.updateWantlistFilesDisplay();
+                    
+                    resolve(cardNames.size);
+                } catch (error) {
+                    reject(new Error(`Failed to parse CSV: ${error.message}`));
+                }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+    
+    /**
+     * Rebuild wantlist from all uploaded files
+     */
+    rebuildWantlist() {
+        this.wantlist.clear();
+        for (const cardNames of this.wantlistFiles.values()) {
+            for (const cardName of cardNames) {
+                this.wantlist.add(cardName);
+            }
+        }
+    }
+    
+    /**
+     * Check if a card is in the wantlist
+     */
+    isCardWanted(cardName) {
+        if (!cardName || this.wantlist.size === 0) return false;
+        const normalized = this.normalizeCardName(cardName);
+        return this.wantlist.has(normalized);
+    }
+    
+    /**
+     * Get list of wantlist files that contain a card
+     */
+    getWantlistsForCard(cardName) {
+        if (!cardName || this.wantlistFiles.size === 0) return [];
+        const normalized = this.normalizeCardName(cardName);
+        const wantlists = [];
+        
+        for (const [fileName, cardSet] of this.wantlistFiles.entries()) {
+            if (cardSet.has(normalized)) {
+                wantlists.push(fileName);
+            }
+        }
+        
+        return wantlists;
+    }
+    
+    /**
+     * Load wantlist from localStorage
+     */
+    loadWantlist() {
+        try {
+            const stored = localStorage.getItem('mtg-wantlist');
+            if (stored) {
+                const data = JSON.parse(stored);
+                // Convert array back to Map
+                this.wantlistFiles = new Map();
+                if (data.files && Array.isArray(data.files)) {
+                    for (const [fileName, cardNamesArray] of data.files) {
+                        this.wantlistFiles.set(fileName, new Set(cardNamesArray));
+                    }
+                }
+                this.rebuildWantlist();
+                this.updateWantlistCount();
+                this.updateWantlistFilesDisplay();
+                console.log(`Loaded ${this.wantlist.size} cards from wantlist (${this.wantlistFiles.size} file(s))`);
+            } else {
+                this.wantlistFiles = new Map();
+                this.wantlist = new Set();
+                this.updateWantlistCount();
+                this.updateWantlistFilesDisplay();
+            }
+        } catch (error) {
+            console.warn('Could not load wantlist from localStorage:', error);
+            this.wantlistFiles = new Map();
+            this.wantlist = new Set();
+            this.updateWantlistCount();
+            this.updateWantlistFilesDisplay();
+        }
+    }
+    
+    /**
+     * Save wantlist to localStorage
+     */
+    saveWantlist() {
+        try {
+            // Convert Map to array for JSON serialization
+            const filesArray = Array.from(this.wantlistFiles.entries()).map(([name, cardSet]) => [
+                name,
+                Array.from(cardSet)
+            ]);
+            const data = { files: filesArray };
+            localStorage.setItem('mtg-wantlist', JSON.stringify(data));
+            console.log(`Saved ${this.wantlist.size} cards to wantlist (${this.wantlistFiles.size} file(s))`);
+        } catch (error) {
+            console.warn('Could not save wantlist to localStorage:', error);
+        }
+    }
+    
+    /**
+     * Clear wantlist
+     */
+    clearWantlist() {
+        this.wantlist.clear();
+        this.wantlistFiles.clear();
+        this.saveWantlist();
+        this.updateWantlistCount();
+        this.updateWantlistFilesDisplay();
+        
+        // Re-categorize existing results if any
+        if (this.results.length > 0) {
+            this.displayResults();
+        }
+    }
+    
+    /**
+     * Update wantlist count display
+     */
+    updateWantlistCount() {
+        if (this.wantlistCount) {
+            const uniqueCount = this.wantlist.size;
+            this.wantlistCount.textContent = `${uniqueCount} unique card${uniqueCount !== 1 ? 's' : ''} in wantlist`;
+        }
+        
+        // Show/hide buttons
+        if (this.clearWantlistBtn) {
+            if (this.wantlist.size > 0) {
+                this.clearWantlistBtn.classList.remove('hidden');
+            } else {
+                this.clearWantlistBtn.classList.add('hidden');
+            }
+        }
+        if (this.viewWantlistSummaryBtn) {
+            if (this.wantlist.size > 0) {
+                this.viewWantlistSummaryBtn.classList.remove('hidden');
+            } else {
+                this.viewWantlistSummaryBtn.classList.add('hidden');
+            }
+        }
+    }
+    
+    /**
+     * Update wantlist files display
+     */
+    updateWantlistFilesDisplay() {
+        if (this.wantlistFilesElement) {
+            if (this.wantlistFiles.size === 0) {
+                this.wantlistFilesElement.innerHTML = '';
+            } else {
+                const fileList = Array.from(this.wantlistFiles.keys()).map(name => {
+                    const cardCount = this.wantlistFiles.get(name).size;
+                    return `<span style="display: inline-block; margin: 2px 5px; padding: 2px 8px; background: #fff9e6; border-radius: 3px; font-size: 0.8em;">${name} (${cardCount} cards)</span>`;
+                }).join('');
+                this.wantlistFilesElement.innerHTML = `<div style="margin-top: 5px;"><strong>Loaded files:</strong> ${fileList}</div>`;
+            }
+        }
+    }
+    
+    /**
+     * Show wantlist summary modal
+     */
+    showWantlistSummaryModal() {
+        if (!this.wantlistSummaryModal || !this.wantlistSummaryContent) return;
+        
+        if (this.wantlistFiles.size === 0) {
+            return; // Don't show modal if no files
+        }
+        
+        // Build summary table
+        const files = Array.from(this.wantlistFiles.entries());
+        let totalCards = 0;
+        
+        const tableRows = files.map(([fileName, cardSet]) => {
+            const cardCount = cardSet.size;
+            totalCards += cardCount;
+            return `
+                <tr style="border-bottom: 1px solid #e0e0e0;">
+                    <td style="padding: 12px; text-align: left; font-weight: 500;">${fileName}</td>
+                    <td style="padding: 12px; text-align: right; color: #ff9800; font-weight: bold;">${cardCount}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        const summaryHtml = `
+            <div style="margin-bottom: 15px;">
+                <p style="color: #666; margin: 0 0 10px 0;">Loaded <strong>${files.length}</strong> wantlist file(s) with a total of <strong style="color: #ff9800;">${totalCards}</strong> unique card${totalCards !== 1 ? 's' : ''}.</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <thead>
+                    <tr style="background: #fff3cd; border-bottom: 2px solid #ffc107;">
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #333;">Wantlist File</th>
+                        <th style="padding: 12px; text-align: right; font-weight: bold; color: #333;">Card Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                    <tr style="background: #f8f9fa; border-top: 2px solid #ffc107;">
+                        <td style="padding: 12px; text-align: left; font-weight: bold;">Total</td>
+                        <td style="padding: 12px; text-align: right; font-weight: bold; color: #ff9800;">${totalCards}</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+        
+        this.wantlistSummaryContent.innerHTML = summaryHtml;
+        this.wantlistSummaryModal.classList.add('active');
+    }
+    
+    /**
+     * Hide wantlist summary modal
+     */
+    hideWantlistSummaryModal() {
+        if (this.wantlistSummaryModal) {
+            this.wantlistSummaryModal.classList.remove('active');
+        }
     }
     
     showTrainingStats() {
@@ -546,8 +975,8 @@ class MTGApp {
         if (this.uploadedFiles.length === 0) return;
         
         // Show progress
-        this.progressSection.style.display = 'block';
-        this.resultsSection.style.display = 'none';
+        this.progressSection.classList.remove('hidden');
+        this.resultsSection.classList.add('hidden');
         this.processBtn.disabled = true;
         
         // Reset training stats for new batch
@@ -687,8 +1116,8 @@ class MTGApp {
         
         // Display results
         this.displayResults();
-        this.progressSection.style.display = 'none';
-        this.resultsSection.style.display = 'block';
+        this.progressSection.classList.add('hidden');
+        this.resultsSection.classList.remove('hidden');
         this.processBtn.disabled = false;
     }
 
@@ -708,15 +1137,28 @@ class MTGApp {
 
     displayResults() {
         // Categorize results
-        const wanted = []; // Identified but not owned
-        const owned = []; // Identified and owned
+        const inWantlist = []; // Identified, in wantlist, but NOT in inventory
+        const inBoth = []; // Identified, in BOTH wantlist and inventory
+        const wanted = []; // Identified, not in wantlist, not in inventory
+        const owned = []; // Identified, in inventory, but NOT in wantlist
         const unidentified = []; // Not identified
         
         this.results.forEach(result => {
             if (result.identified && result.cardName) {
-                if (this.isCardOwned(result.cardName)) {
+                const isWanted = this.isCardWanted(result.cardName);
+                const isOwned = this.isCardOwned(result.cardName);
+                
+                if (isWanted && isOwned) {
+                    // In both wantlist and inventory
+                    inBoth.push(result);
+                } else if (isWanted) {
+                    // In wantlist but not in inventory
+                    inWantlist.push(result);
+                } else if (isOwned) {
+                    // In inventory but not in wantlist
                     owned.push(result);
                 } else {
+                    // Identified but not in wantlist or inventory
                     wanted.push(result);
                 }
             } else {
@@ -725,16 +1167,38 @@ class MTGApp {
         });
         
         // Update counts
+        this.inWantlistCount.textContent = inWantlist.length;
+        this.inBothCount.textContent = inBoth.length;
         this.wantedCount.textContent = wanted.length;
         this.ownedCount.textContent = owned.length;
         this.unidentifiedCount.textContent = unidentified.length;
         
         // Clear grids
+        this.inWantlistGrid.innerHTML = '';
+        this.inBothGrid.innerHTML = '';
         this.wantedGrid.innerHTML = '';
         this.ownedGrid.innerHTML = '';
         this.unidentifiedGrid.innerHTML = '';
         
-        // Display wanted cards (identified but not owned)
+        // Display cards in wantlist only (green - success)
+        if (inWantlist.length === 0) {
+            this.inWantlistGrid.innerHTML = '<div class="empty-state"><p>No cards in wantlist</p></div>';
+        } else {
+            inWantlist.forEach(result => {
+                this.createCardElement(result, this.inWantlistGrid, false, true, false);
+            });
+        }
+        
+        // Display cards in both wantlist and inventory (yellow/orange - warning)
+        if (inBoth.length === 0) {
+            this.inBothGrid.innerHTML = '<div class="empty-state"><p>No cards in both wantlist and inventory</p></div>';
+        } else {
+            inBoth.forEach(result => {
+                this.createCardElement(result, this.inBothGrid, false, true, true);
+            });
+        }
+        
+        // Display wanted cards (identified but not in wantlist or inventory)
         if (wanted.length === 0) {
             this.wantedGrid.innerHTML = '<div class="empty-state"><p>No wanted cards</p></div>';
         } else {
@@ -743,7 +1207,7 @@ class MTGApp {
             });
         }
         
-        // Display owned cards (identified and owned)
+        // Display owned cards (identified and owned, but not in wantlist)
         if (owned.length === 0) {
             this.ownedGrid.innerHTML = '<div class="empty-state"><p>No owned cards</p></div>';
         } else {
@@ -762,7 +1226,7 @@ class MTGApp {
         }
     }
 
-    createCardElement(result, container, isUnidentified = false) {
+    createCardElement(result, container, isUnidentified = false, showWantlistInfo = false, isAlsoInInventory = false) {
         const cardDiv = document.createElement('div');
         cardDiv.className = `card-item ${isUnidentified ? 'unidentified' : ''}`;
         
@@ -801,6 +1265,60 @@ class MTGApp {
             confidenceDiv.textContent = `Error: ${result.error}`;
         } else {
             confidenceDiv.textContent = 'Could not identify';
+        }
+
+        // Show wantlist information if requested
+        if (showWantlistInfo && result.cardName) {
+            const wantlists = this.getWantlistsForCard(result.cardName);
+            
+            if (wantlists.length > 0) {
+                const wantlistDiv = document.createElement('div');
+                wantlistDiv.className = 'card-wantlist';
+                wantlistDiv.style.marginTop = '8px';
+                wantlistDiv.style.padding = '8px';
+                // Yellow/orange warning style if also in inventory (needs cleanup)
+                // Green success style if only in wantlist
+                wantlistDiv.style.background = isAlsoInInventory ? '#fff3cd' : '#d4edda';
+                wantlistDiv.style.borderRadius = '4px';
+                wantlistDiv.style.fontSize = '0.85em';
+                // Border to highlight if in inventory (warning)
+                if (isAlsoInInventory) {
+                    wantlistDiv.style.border = '2px solid #ff9800';
+                }
+                
+                const wantlistLabel = document.createElement('div');
+                wantlistLabel.style.fontWeight = 'bold';
+                // Yellow/orange warning color if also in inventory, green success if only in wantlist
+                wantlistLabel.style.color = isAlsoInInventory ? '#ff9800' : '#28a745';
+                wantlistLabel.style.marginBottom = '4px';
+                
+                // Different label text if also in inventory
+                if (isAlsoInInventory) {
+                    wantlistLabel.textContent = wantlists.length === 1 
+                        ? '⚠ In Wantlist (Also in Inventory - Remove from Wantlist):' 
+                        : '⚠ In Wantlists (Also in Inventory - Remove from Wantlists):';
+                } else {
+                    wantlistLabel.textContent = wantlists.length === 1 ? '✓ In Wantlist:' : '✓ In Wantlists:';
+                }
+                
+                const wantlistList = document.createElement('div');
+                wantlistList.style.color = '#666';
+                wantlists.forEach((fileName, index) => {
+                    const fileSpan = document.createElement('span');
+                    fileSpan.style.display = 'inline-block';
+                    fileSpan.style.marginRight = '8px';
+                    fileSpan.style.padding = '2px 6px';
+                    // Yellow badge if also in inventory (warning), green badge if only in wantlist (success)
+                    fileSpan.style.background = isAlsoInInventory ? '#fff9e6' : '#c3e6cb';
+                    fileSpan.style.borderRadius = '3px';
+                    fileSpan.textContent = fileName;
+                    wantlistList.appendChild(fileSpan);
+                });
+                
+                wantlistDiv.appendChild(wantlistLabel);
+                wantlistDiv.appendChild(wantlistList);
+                infoDiv.appendChild(wantlistDiv);
+            }
         }
 
         // Add correction button for training
@@ -1054,11 +1572,32 @@ class MTGApp {
     async downloadImages(type) {
         let filtered = [];
         
-        if (type === 'wanted') {
-            // Identified but not owned
-            filtered = this.results.filter(r => r.identified && r.cardName && !this.isCardOwned(r.cardName));
+        if (type === 'inWantlist') {
+            // Identified, in wantlist, but NOT in inventory
+            filtered = this.results.filter(r => 
+                r.identified && 
+                r.cardName && 
+                this.isCardWanted(r.cardName) &&
+                !this.isCardOwned(r.cardName)
+            );
+        } else if (type === 'inBoth') {
+            // Identified, in BOTH wantlist and inventory
+            filtered = this.results.filter(r => 
+                r.identified && 
+                r.cardName && 
+                this.isCardWanted(r.cardName) &&
+                this.isCardOwned(r.cardName)
+            );
+        } else if (type === 'wanted') {
+            // Identified, not in wantlist, not owned
+            filtered = this.results.filter(r => 
+                r.identified && 
+                r.cardName && 
+                !this.isCardOwned(r.cardName) && 
+                !this.isCardWanted(r.cardName)
+            );
         } else if (type === 'owned') {
-            // Identified and owned
+            // Identified and owned (inventory takes priority over wantlist)
             filtered = this.results.filter(r => r.identified && r.cardName && this.isCardOwned(r.cardName));
         } else if (type === 'unidentified') {
             // Not identified
