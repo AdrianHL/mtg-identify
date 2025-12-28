@@ -299,17 +299,115 @@ class MTGCardRecognizer {
         }
         let usedFallback = false;
         
-        // If border detection fails, try a fallback: crop center 80% (assuming border is ~10% on each side)
+        // If border detection fails, use a smarter fallback that checks for actual borders
         if (!cardArea) {
-            console.log(`[Black Border Retry] Border detection failed, using fallback crop`);
-            const marginX = Math.floor(image.width * 0.1);
-            const marginY = Math.floor(image.height * 0.1);
+            console.log(`[Black Border Retry] Border detection failed, checking for borders before fallback crop`);
+            
+            // Quick check for dark borders at edges
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            const getBrightness = (idx) => (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+            const DARK_THRESHOLD = 50;
+            const isDark = (brightness) => brightness < DARK_THRESHOLD;
+            
+            // Check top edge for dark border (sample middle 60% of width)
+            let topHasBorder = false;
+            const topSampleStart = Math.floor(image.width * 0.2);
+            const topSampleEnd = Math.floor(image.width * 0.8);
+            let topDarkCount = 0;
+            let topSamples = 0;
+            for (let y = 0; y < Math.min(20, Math.floor(image.height * 0.1)); y++) {
+                for (let x = topSampleStart; x < topSampleEnd; x += 5) {
+                    const idx = (y * image.width + x) * 4;
+                    const brightness = getBrightness(idx);
+                    if (isDark(brightness)) topDarkCount++;
+                    topSamples++;
+                }
+            }
+            topHasBorder = topSamples > 0 && (topDarkCount / topSamples) > 0.6; // 60% dark = border
+            
+            // Check left edge for dark border (sample middle 60% of height)
+            let leftHasBorder = false;
+            const leftSampleStart = Math.floor(image.height * 0.2);
+            const leftSampleEnd = Math.floor(image.height * 0.8);
+            let leftDarkCount = 0;
+            let leftSamples = 0;
+            for (let x = 0; x < Math.min(20, Math.floor(image.width * 0.1)); x++) {
+                for (let y = leftSampleStart; y < leftSampleEnd; y += 5) {
+                    const idx = (y * image.width + x) * 4;
+                    const brightness = getBrightness(idx);
+                    if (isDark(brightness)) leftDarkCount++;
+                    leftSamples++;
+                }
+            }
+            leftHasBorder = leftSamples > 0 && (leftDarkCount / leftSamples) > 0.6;
+            
+            // Check right edge for dark border
+            let rightHasBorder = false;
+            let rightDarkCount = 0;
+            let rightSamples = 0;
+            for (let x = image.width - 1; x >= Math.max(image.width - 20, image.width - Math.floor(image.width * 0.1)); x--) {
+                for (let y = leftSampleStart; y < leftSampleEnd; y += 5) {
+                    const idx = (y * image.width + x) * 4;
+                    const brightness = getBrightness(idx);
+                    if (isDark(brightness)) rightDarkCount++;
+                    rightSamples++;
+                }
+            }
+            rightHasBorder = rightSamples > 0 && (rightDarkCount / rightSamples) > 0.6;
+            
+            // Check bottom edge for dark border
+            let bottomHasBorder = false;
+            let bottomDarkCount = 0;
+            let bottomSamples = 0;
+            for (let y = image.height - 1; y >= Math.max(image.height - 20, image.height - Math.floor(image.height * 0.1)); y--) {
+                for (let x = topSampleStart; x < topSampleEnd; x += 5) {
+                    const idx = (y * image.width + x) * 4;
+                    const brightness = getBrightness(idx);
+                    if (isDark(brightness)) bottomDarkCount++;
+                    bottomSamples++;
+                }
+            }
+            bottomHasBorder = bottomSamples > 0 && (bottomDarkCount / bottomSamples) > 0.6;
+            
+            console.log(`[Black Border Retry] Border check - top: ${topHasBorder}, left: ${leftHasBorder}, right: ${rightHasBorder}, bottom: ${bottomHasBorder}`);
+            
+            // Only crop from edges that have borders
+            // If no borders detected, use full image (or minimal crop to avoid edge artifacts)
+            let marginX = 0;
+            let marginY = 0;
+            
+            if (leftHasBorder || rightHasBorder) {
+                marginX = Math.floor(image.width * 0.1);
+            } else {
+                // Minimal crop from sides to avoid edge artifacts
+                marginX = Math.floor(image.width * 0.02);
+            }
+            
+            if (topHasBorder) {
+                marginY = Math.floor(image.height * 0.1);
+            } else {
+                // No top border - don't crop from top (or minimal crop)
+                marginY = Math.floor(image.height * 0.01);
+            }
+            
+            // Always crop a bit from bottom (usually safe)
+            const bottomMargin = Math.floor(image.height * 0.05);
+            
             cardArea = {
                 x: marginX,
                 y: marginY,
                 width: image.width - (marginX * 2),
-                height: image.height - (marginY * 2)
+                height: image.height - marginY - bottomMargin
             };
+            
+            console.log(`[Black Border Retry] Using smart fallback crop: x=${cardArea.x}, y=${cardArea.y}, w=${cardArea.width}, h=${cardArea.height}`);
             usedFallback = true;
         }
         
@@ -422,6 +520,185 @@ class MTGCardRecognizer {
             reason: databaseMatch ? 
                 `Match found but confidence ${databaseMatch.confidence.toFixed(2)} < ${secondPassThreshold}` :
                 'No match found in database'
+        };
+    }
+    
+    /**
+     * Third pass: Alternative detection strategy for cards that failed black border detection
+     * Uses multiple crop strategies to find card content when border detection found wrong black zones
+     */
+    async retryWithAlternativeDetection(image) {
+        console.log(`[Alternative Detection] Starting third pass for image ${image.width}x${image.height}`);
+        
+        // Strategy 1: Top-left region (where card names usually are)
+        // Strategy 2: Center-top region (wider area)
+        // Strategy 3: Full image with minimal edge crop (in case there's no border)
+        // Strategy 4: Find brightest region (likely card content, not black border)
+        
+        const strategies = [
+            {
+                name: 'top-left-region',
+                crop: {
+                    x: Math.floor(image.width * 0.05),
+                    y: Math.floor(image.height * 0.05),
+                    width: Math.floor(image.width * 0.5),
+                    height: Math.floor(image.height * 0.3)
+                }
+            },
+            {
+                name: 'center-top-region',
+                crop: {
+                    x: Math.floor(image.width * 0.1),
+                    y: Math.floor(image.height * 0.05),
+                    width: Math.floor(image.width * 0.8),
+                    height: Math.floor(image.height * 0.35)
+                }
+            },
+            {
+                name: 'full-image-minimal-crop',
+                crop: {
+                    x: Math.floor(image.width * 0.02),
+                    y: Math.floor(image.height * 0.02),
+                    width: Math.floor(image.width * 0.96),
+                    height: Math.floor(image.height * 0.96)
+                }
+            }
+        ];
+        
+        // Strategy 4: Find brightest region (inverse of border detection - find card content, not border)
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        const getBrightness = (idx) => (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        // Find the brightest rectangular region (likely card content, not black border)
+        let maxBrightness = 0;
+        let bestRegion = null;
+        const regionSize = Math.min(image.width, image.height) * 0.6;
+        
+        for (let y = 0; y < image.height - regionSize; y += Math.floor(regionSize * 0.3)) {
+            for (let x = 0; x < image.width - regionSize; x += Math.floor(regionSize * 0.3)) {
+                let totalBrightness = 0;
+                let sampleCount = 0;
+                
+                // Sample the region
+                for (let sy = y; sy < y + regionSize && sy < image.height; sy += 5) {
+                    for (let sx = x; sx < x + regionSize && sx < image.width; sx += 5) {
+                        const idx = (sy * image.width + sx) * 4;
+                        totalBrightness += getBrightness(idx);
+                        sampleCount++;
+                    }
+                }
+                
+                const avgBrightness = totalBrightness / sampleCount;
+                if (avgBrightness > maxBrightness) {
+                    maxBrightness = avgBrightness;
+                    bestRegion = {
+                        x: x,
+                        y: y,
+                        width: Math.min(regionSize, image.width - x),
+                        height: Math.min(regionSize, image.height - y)
+                    };
+                }
+            }
+        }
+        
+        if (bestRegion) {
+            strategies.push({
+                name: 'brightest-region',
+                crop: bestRegion
+            });
+        } else {
+            // Fallback for strategy 4
+            strategies.push({
+                name: 'brightest-region-fallback',
+                crop: {
+                    x: Math.floor(image.width * 0.1),
+                    y: Math.floor(image.height * 0.1),
+                    width: Math.floor(image.width * 0.8),
+                    height: Math.floor(image.height * 0.8)
+                }
+            });
+        }
+        
+        // Try each strategy
+        for (const strategy of strategies) {
+            console.log(`[Alternative Detection] Trying strategy: ${strategy.name}`, strategy.crop);
+            
+            // Create cropped image
+            const croppedCanvas = document.createElement('canvas');
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCanvas.width = strategy.crop.width;
+            croppedCanvas.height = strategy.crop.height;
+            
+            croppedCtx.drawImage(
+                image,
+                strategy.crop.x, strategy.crop.y, strategy.crop.width, strategy.crop.height,
+                0, 0, strategy.crop.width, strategy.crop.height
+            );
+            
+            const croppedImage = new Image();
+            croppedImage.src = croppedCanvas.toDataURL();
+            
+            await new Promise((resolve) => {
+                croppedImage.onload = resolve;
+            });
+            
+            // Extract text from cropped image
+            const textResult = await this.extractTextFromImage(croppedImage);
+            
+            // Try matching
+            let databaseMatch = null;
+            if (this.nameMatcher && textResult) {
+                if (textResult.cardName && textResult.cardName.length > 1) {
+                    databaseMatch = this.nameMatcher.findBestMatch(textResult.cardName);
+                }
+                
+                if (!databaseMatch && textResult.rawText && textResult.rawText.trim().length > 3) {
+                    databaseMatch = this.nameMatcher.findBestMatch(textResult.rawText);
+                }
+            }
+            
+            // Use lower threshold for third pass (0.80)
+            const thirdPassThreshold = 0.80;
+            
+            if (databaseMatch && databaseMatch.confidence >= thirdPassThreshold) {
+                console.log(`[Alternative Detection] ✓ SUCCESS with ${strategy.name}: "${databaseMatch.cardName}"`);
+                return {
+                    identified: true,
+                    cardName: databaseMatch.cardName,
+                    confidence: databaseMatch.confidence,
+                    method: `alternative_detection_${strategy.name}`,
+                    rawText: textResult.rawText,
+                    allLines: textResult.allLines,
+                    originalOCR: textResult.cardName,
+                    ocrPreviewImage: croppedCanvas.toDataURL('image/png'),
+                    ocrArea: {
+                        ...textResult.ocrArea,
+                        fullCrop: strategy.crop,
+                        isAlternativeDetection: true,
+                        strategy: strategy.name
+                    },
+                    cardArea: strategy.crop,
+                    alternativeDetection: true
+                };
+            }
+        }
+        
+        console.log(`[Alternative Detection] ✗ No match found with any strategy`);
+        
+        // Return failure
+        return {
+            identified: false,
+            cardName: null,
+            confidence: 0,
+            method: 'alternative_detection_no_match',
+            alternativeDetection: true
         };
     }
 

@@ -1121,6 +1121,72 @@ class MTGApp {
             }
         }
         
+        // Third pass: Retry still-unidentified cards with alternative detection strategy
+        const stillUnidentified = this.results.filter(r => !r.identified);
+        if (stillUnidentified.length > 0) {
+            this.updateProgress(95, `Third pass: Retrying ${stillUnidentified.length} cards with alternative detection...`);
+            
+            let thirdPassCompleted = 0;
+            const thirdPassConcurrency = Math.min(2, stillUnidentified.length); // Lower concurrency for third pass
+            
+            const thirdPassRetry = async (result) => {
+                try {
+                    // Load the image again for third pass
+                    const image = await this.loadImageFromFile(result.file);
+                    
+                    // Third pass: Try with alternative detection strategy
+                    const thirdPassResult = await this.recognizer.retryWithAlternativeDetection(image);
+                    
+                    thirdPassCompleted++;
+                    this.updateProgress(95 + (thirdPassCompleted / stillUnidentified.length) * 5, 
+                        `Third pass: ${thirdPassCompleted} of ${stillUnidentified.length}...`);
+                    
+                    return {
+                        file: result.file,
+                        thirdPassResult: thirdPassResult
+                    };
+                } catch (error) {
+                    console.error(`Error in third pass for ${result.file?.name}:`, error);
+                    thirdPassCompleted++;
+                    this.updateProgress(95 + (thirdPassCompleted / stillUnidentified.length) * 5, 
+                        `Third pass: ${thirdPassCompleted} of ${stillUnidentified.length}...`);
+                    return {
+                        file: result.file,
+                        thirdPassResult: null
+                    };
+                }
+            };
+            
+            // Process third pass in batches
+            for (let i = 0; i < stillUnidentified.length; i += thirdPassConcurrency) {
+                const batch = stillUnidentified.slice(i, i + thirdPassConcurrency);
+                const batchPromises = batch.map(result => thirdPassRetry(result));
+                const batchResults = await Promise.all(batchPromises);
+                
+                // Update results
+                for (const { file, thirdPassResult } of batchResults) {
+                    if (thirdPassResult) {
+                        const index = this.results.findIndex(r => r.file === file);
+                        if (index >= 0) {
+                            if (thirdPassResult.identified) {
+                                this.results[index] = {
+                                    file: file,
+                                    ...thirdPassResult
+                                };
+                                console.log(`Third pass successful for ${file.name}: ${thirdPassResult.cardName}`);
+                            } else {
+                                this.results[index] = {
+                                    ...this.results[index],
+                                    ...thirdPassResult,
+                                    thirdPassRetry: true
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         this.updateProgress(100, 'Card name extraction complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         
