@@ -554,6 +554,14 @@ class MTGApp {
     }
     
     /**
+     * Remove .csv extension from filename for display
+     */
+    removeCsvExtension(fileName) {
+        if (!fileName) return fileName;
+        return fileName.replace(/\.csv$/i, '');
+    }
+    
+    /**
      * Get list of wantlist files that contain a card
      */
     getWantlistsForCard(cardName) {
@@ -674,7 +682,8 @@ class MTGApp {
             } else {
                 const fileList = Array.from(this.wantlistFiles.keys()).map(name => {
                     const cardCount = this.wantlistFiles.get(name).size;
-                    return `<span style="display: inline-block; margin: 2px 5px; padding: 2px 8px; background: #fff9e6; border-radius: 3px; font-size: 0.8em;">${name} (${cardCount} cards)</span>`;
+                    const displayName = this.removeCsvExtension(name);
+                    return `<span style="display: inline-block; margin: 2px 5px; padding: 2px 8px; background: #fff9e6; border-radius: 3px; font-size: 0.8em;">${displayName} (${cardCount} cards)</span>`;
                 }).join('');
                 this.wantlistFilesElement.innerHTML = `<div style="margin-top: 5px;"><strong>Loaded files:</strong> ${fileList}</div>`;
             }
@@ -698,9 +707,10 @@ class MTGApp {
         const tableRows = files.map(([fileName, cardSet]) => {
             const cardCount = cardSet.size;
             totalCards += cardCount;
+            const displayName = this.removeCsvExtension(fileName);
             return `
                 <tr style="border-bottom: 1px solid #e0e0e0;">
-                    <td style="padding: 12px; text-align: left; font-weight: 500;">${fileName}</td>
+                    <td style="padding: 12px; text-align: left; font-weight: 500;">${displayName}</td>
                     <td style="padding: 12px; text-align: right; color: #ff9800; font-weight: bold;">${cardCount}</td>
                 </tr>
             `;
@@ -1311,7 +1321,7 @@ class MTGApp {
                     // Yellow badge if also in inventory (warning), green badge if only in wantlist (success)
                     fileSpan.style.background = isAlsoInInventory ? '#fff9e6' : '#c3e6cb';
                     fileSpan.style.borderRadius = '3px';
-                    fileSpan.textContent = fileName;
+                    fileSpan.textContent = this.removeCsvExtension(fileName);
                     wantlistList.appendChild(fileSpan);
                 });
                 
