@@ -52,19 +52,28 @@ class MTGCardRecognizer {
     /**
      * Process an image to identify MTG cards
      * @param {HTMLImageElement|ImageData} image - The image to process
+     * @param {Object} perfMetrics - Performance metrics object to track timing
      * @returns {Promise<Object>} Recognition result with card name and confidence
      */
-    async recognizeCard(image) {
+    async recognizeCard(image, perfMetrics = null) {
         if (!this.initialized) {
             await this.initialize();
         }
 
         try {
-            // Extract image features
+            // Track feature extraction time
+            const featuresStart = performance.now();
             const features = await this.extractFeatures(image);
+            if (perfMetrics) {
+                perfMetrics.phases.featureExtraction = performance.now() - featuresStart;
+            }
             
-            // Attempt to identify the card
-            const result = await this.matchCard(features, image);
+            // Track matching time
+            const matchStart = performance.now();
+            const result = await this.matchCard(features, image, perfMetrics);
+            if (perfMetrics) {
+                perfMetrics.phases.matching = performance.now() - matchStart;
+            }
             
             return result;
         } catch (error) {
@@ -215,9 +224,10 @@ class MTGCardRecognizer {
      * Match extracted features against card database
      * @param {Object} features - Extracted image features
      * @param {HTMLImageElement} image - Original image
+     * @param {Object} perfMetrics - Performance metrics object to track timing
      * @returns {Promise<Object>} Match result
      */
-    async matchCard(features, image) {
+    async matchCard(features, image, perfMetrics = null) {
         // Check if image looks like an MTG card based on features
         const isMTGCard = this.validateMTGCardFeatures(features);
         
@@ -233,11 +243,16 @@ class MTGCardRecognizer {
         // In a real implementation, this would match against a comprehensive database
         // For now, we'll use a heuristic approach
         
-        // Try to extract text using OCR
+        // Track OCR time
+        const ocrStart = performance.now();
         const textResult = await this.extractTextFromImage(image);
+        if (perfMetrics) {
+            perfMetrics.phases.ocr = performance.now() - ocrStart;
+        }
         
         // Only mark as identified if we have a match in the database
         // First, try fuzzy matching against known card names
+        const dbMatchStart = performance.now();
         let databaseMatch = null;
         if (this.nameMatcher && textResult) {
             // Try matching the extracted card name
@@ -249,6 +264,9 @@ class MTGCardRecognizer {
             if (!databaseMatch && textResult.rawText && textResult.rawText.trim().length > 3) {
                 databaseMatch = this.nameMatcher.findBestMatch(textResult.rawText);
             }
+        }
+        if (perfMetrics) {
+            perfMetrics.phases.databaseMatching = performance.now() - dbMatchStart;
         }
         
         // Only mark as identified if we found a match in the database
@@ -288,14 +306,21 @@ class MTGCardRecognizer {
 
     /**
      * Retry identification with black border detection (for unidentified cards)
+     * @param {HTMLImageElement} image - The image to process
+     * @param {Object} perfMetrics - Performance metrics object to track timing
      */
-    async retryWithBlackBorder(image) {
+    async retryWithBlackBorder(image, perfMetrics = null) {
         console.log(`[Black Border Retry] Starting for image ${image.width}x${image.height}`);
         
-        // Try to detect black border and crop to card area
+        // Track border detection time
+        const borderDetectStart = performance.now();
         let cardArea = null;
         if (this.borderDetector) {
             cardArea = this.borderDetector.detectBlackBorder(image);
+        }
+        if (perfMetrics) {
+            perfMetrics.phases.blackBorderDetection = (perfMetrics.phases.blackBorderDetection || 0) + (performance.now() - borderDetectStart);
+            perfMetrics.retryCount = (perfMetrics.retryCount || 0) + 1;
         }
         let usedFallback = false;
         
@@ -439,8 +464,12 @@ class MTGCardRecognizer {
         
         console.log(`[Black Border Retry] Extracting text from cropped image`);
         
-        // Now extract text from the cropped card image
+        // Track OCR retry time
+        const ocrRetryStart = performance.now();
         const textResult = await this.extractTextFromImage(croppedImage);
+        if (perfMetrics) {
+            perfMetrics.phases.ocrRetry = (perfMetrics.phases.ocrRetry || 0) + (performance.now() - ocrRetryStart);
+        }
         
         console.log(`[Black Border Retry] OCR result:`, {
             cardName: textResult?.cardName,
@@ -448,7 +477,8 @@ class MTGCardRecognizer {
             confidence: textResult?.confidence
         });
         
-        // Try matching against database
+        // Track database matching retry time
+        const dbMatchRetryStart = performance.now();
         let databaseMatch = null;
         if (this.nameMatcher && textResult) {
             // Try matching the extracted card name
@@ -468,6 +498,9 @@ class MTGCardRecognizer {
                     console.log(`[Black Border Retry] Match found via rawText: "${databaseMatch.cardName}" (confidence: ${databaseMatch.confidence})`);
                 }
             }
+        }
+        if (perfMetrics) {
+            perfMetrics.phases.databaseMatchingRetry = (perfMetrics.phases.databaseMatchingRetry || 0) + (performance.now() - dbMatchRetryStart);
         }
         
         // For second pass, use lower confidence threshold (0.85 instead of 0.98)
@@ -526,9 +559,15 @@ class MTGCardRecognizer {
     /**
      * Third pass: Alternative detection strategy for cards that failed black border detection
      * Uses multiple crop strategies to find card content when border detection found wrong black zones
+     * @param {HTMLImageElement} image - The image to process
+     * @param {Object} perfMetrics - Performance metrics object to track timing
      */
-    async retryWithAlternativeDetection(image) {
+    async retryWithAlternativeDetection(image, perfMetrics = null) {
         console.log(`[Alternative Detection] Starting third pass for image ${image.width}x${image.height}`);
+        
+        if (perfMetrics) {
+            perfMetrics.retryCount = (perfMetrics.retryCount || 0) + 1;
+        }
         
         // Strategy 1: Top-left region (where card names usually are)
         // Strategy 2: Center-top region (wider area)
@@ -649,10 +688,15 @@ class MTGCardRecognizer {
                 croppedImage.onload = resolve;
             });
             
-            // Extract text from cropped image
+            // Track alternative detection OCR time
+            const altOcrStart = performance.now();
             const textResult = await this.extractTextFromImage(croppedImage);
+            if (perfMetrics) {
+                perfMetrics.phases.alternativeOcr = (perfMetrics.phases.alternativeOcr || 0) + (performance.now() - altOcrStart);
+            }
             
-            // Try matching
+            // Track alternative detection matching time
+            const altMatchStart = performance.now();
             let databaseMatch = null;
             if (this.nameMatcher && textResult) {
                 if (textResult.cardName && textResult.cardName.length > 1) {
@@ -662,6 +706,9 @@ class MTGCardRecognizer {
                 if (!databaseMatch && textResult.rawText && textResult.rawText.trim().length > 3) {
                     databaseMatch = this.nameMatcher.findBestMatch(textResult.rawText);
                 }
+            }
+            if (perfMetrics) {
+                perfMetrics.phases.alternativeMatching = (perfMetrics.phases.alternativeMatching || 0) + (performance.now() - altMatchStart);
             }
             
             // Use lower threshold for third pass (0.80)
@@ -1491,11 +1538,25 @@ class MTGCardRecognizer {
             const img = new Image();
             img.onload = async () => {
                 try {
-                    const result = await this.recognizeCard(img);
+                    // Start performance tracking
+                    const perfStart = performance.now();
+                    const perfMetrics = {
+                        startTime: perfStart,
+                        phases: {},
+                        retryCount: 0,
+                        totalTime: 0
+                    };
+                    
+                    const result = await this.recognizeCard(img, perfMetrics);
+                    
+                    // Calculate total time
+                    perfMetrics.totalTime = performance.now() - perfStart;
+                    
                     resolve({
                         ...result,
                         imageElement: img,
-                        fileName: file.name
+                        fileName: file.name,
+                        performance: perfMetrics
                     });
                 } catch (error) {
                     reject(error);

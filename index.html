@@ -152,6 +152,43 @@
         </div>
     </div>
 
+    <!-- Image Zoom Modal -->
+    <div id="imageZoomModal" class="image-zoom-modal">
+        <div class="image-zoom-content">
+            <div class="image-zoom-header">
+                <div class="image-zoom-title" id="imageZoomTitle">Card Image</div>
+                <button id="imageZoomClose" class="image-zoom-close">×</button>
+            </div>
+            <div class="image-zoom-body">
+                <div class="image-zoom-image-container">
+                    <img id="imageZoomImage" class="image-zoom-image" src="" alt="Card image">
+                </div>
+                <div class="image-zoom-info">
+                    <div class="image-zoom-info-section">
+                        <h3>Card Name</h3>
+                        <p id="imageZoomCardName">-</p>
+                    </div>
+                    <div class="image-zoom-info-section">
+                        <h3>Confidence</h3>
+                        <p id="imageZoomConfidence">-</p>
+                    </div>
+                    <div class="image-zoom-info-section">
+                        <h3>OCR Text</h3>
+                        <div id="imageZoomOcrText" class="image-zoom-ocr-text">-</div>
+                    </div>
+                    <div class="image-zoom-info-section" id="imageZoomMethodSection" style="display: none;">
+                        <h3>Method</h3>
+                        <p id="imageZoomMethod">-</p>
+                    </div>
+                    <div class="image-zoom-info-section" id="imageZoomPerformanceSection" style="display: none;">
+                        <h3>Compute Performance</h3>
+                        <div id="imageZoomPerformance">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="training-helper.js"></script>

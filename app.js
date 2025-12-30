@@ -59,6 +59,17 @@ class MTGApp {
         this.wantlistSummaryContent = document.getElementById('wantlistSummaryContent');
         this.closeWantlistModalBtn = document.getElementById('closeWantlistModalBtn');
         this.viewWantlistDetailsBtn = document.getElementById('viewWantlistDetailsBtn');
+        this.imageZoomModal = document.getElementById('imageZoomModal');
+        this.imageZoomClose = document.getElementById('imageZoomClose');
+        this.imageZoomImage = document.getElementById('imageZoomImage');
+        this.imageZoomTitle = document.getElementById('imageZoomTitle');
+        this.imageZoomCardName = document.getElementById('imageZoomCardName');
+        this.imageZoomConfidence = document.getElementById('imageZoomConfidence');
+        this.imageZoomOcrText = document.getElementById('imageZoomOcrText');
+        this.imageZoomMethod = document.getElementById('imageZoomMethod');
+        this.imageZoomMethodSection = document.getElementById('imageZoomMethodSection');
+        this.imageZoomPerformance = document.getElementById('imageZoomPerformance');
+        this.imageZoomPerformanceSection = document.getElementById('imageZoomPerformanceSection');
     }
 
     setupEventListeners() {
@@ -271,6 +282,28 @@ class MTGApp {
                 }
             });
         }
+        
+        // Image zoom modal
+        if (this.imageZoomClose) {
+            this.imageZoomClose.addEventListener('click', () => {
+                this.hideImageZoomModal();
+            });
+        }
+        
+        if (this.imageZoomModal) {
+            this.imageZoomModal.addEventListener('click', (e) => {
+                if (e.target === this.imageZoomModal) {
+                    this.hideImageZoomModal();
+                }
+            });
+        }
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.imageZoomModal && this.imageZoomModal.classList.contains('active')) {
+                this.hideImageZoomModal();
+            }
+        });
     }
     
     /**
@@ -750,6 +783,129 @@ class MTGApp {
         }
     }
     
+    /**
+     * Show image zoom modal with card details
+     */
+    showImageZoomModal(result) {
+        if (!this.imageZoomModal || !result) return;
+        
+        // Set image
+        if (this.imageZoomImage) {
+            if (result.imageElement && result.imageElement.src) {
+                this.imageZoomImage.src = result.imageElement.src;
+            } else if (result.file) {
+                this.imageZoomImage.src = URL.createObjectURL(result.file);
+            } else {
+                this.imageZoomImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#ccc"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999">Image not available</text></svg>';
+            }
+            this.imageZoomImage.alt = result.fileName || result.file?.name || 'Card image';
+        }
+        
+        // Set title
+        if (this.imageZoomTitle) {
+            this.imageZoomTitle.textContent = result.fileName || result.file?.name || 'Card Image';
+        }
+        
+        // Set card name
+        if (this.imageZoomCardName) {
+            this.imageZoomCardName.textContent = result.cardName || 'Unidentified Card';
+            this.imageZoomCardName.style.color = result.identified ? '#333' : '#999';
+            this.imageZoomCardName.style.fontStyle = result.identified ? 'normal' : 'italic';
+        }
+        
+        // Set confidence
+        if (this.imageZoomConfidence) {
+            if (result.confidence > 0) {
+                this.imageZoomConfidence.textContent = `${(result.confidence * 100).toFixed(1)}%`;
+                if (result.method) {
+                    this.imageZoomConfidence.textContent += ` (${result.method})`;
+                }
+            } else if (result.error) {
+                this.imageZoomConfidence.textContent = `Error: ${result.error}`;
+                this.imageZoomConfidence.style.color = '#dc3545';
+            } else {
+                this.imageZoomConfidence.textContent = 'Could not identify';
+                this.imageZoomConfidence.style.color = '#999';
+            }
+        }
+        
+        // Set OCR text
+        if (this.imageZoomOcrText) {
+            if (result.rawText && result.rawText.trim().length > 0) {
+                this.imageZoomOcrText.textContent = result.rawText;
+                this.imageZoomOcrText.style.display = 'block';
+            } else {
+                this.imageZoomOcrText.textContent = 'No OCR text available';
+                this.imageZoomOcrText.style.display = 'block';
+            }
+        }
+        
+        // Set method (if available)
+        if (this.imageZoomMethod && this.imageZoomMethodSection) {
+            if (result.method) {
+                this.imageZoomMethod.textContent = result.method;
+                this.imageZoomMethodSection.style.display = 'block';
+            } else {
+                this.imageZoomMethodSection.style.display = 'none';
+            }
+        }
+        
+        // Set performance metrics (if available)
+        if (this.imageZoomPerformance && this.imageZoomPerformanceSection && result.performance) {
+            const perf = result.performance;
+            const totalTime = perf.totalTime || 0;
+            const retryCount = perf.retryCount || 0;
+            const phases = perf.phases || {};
+            const computeIntensity = this.calculateComputeIntensity(perf);
+            
+            let perfHtml = `
+                <div style="margin-bottom: 10px;">
+                    <strong>Total Processing Time:</strong> ${(totalTime / 1000).toFixed(2)}s
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong>Retry Attempts:</strong> ${retryCount}
+                </div>
+                <div style="margin-bottom: 10px; padding: 8px; background: ${computeIntensity.color}20; border-left: 3px solid ${computeIntensity.color}; border-radius: 4px;">
+                    <strong>Compute Intensity:</strong> <span style="color: ${computeIntensity.color}; font-weight: bold;">${computeIntensity.label}</span>
+                    <span style="font-size: 0.85em; color: #666;"> (Score: ${(computeIntensity.score * 100).toFixed(0)}%)</span>
+                </div>
+            `;
+            
+            // Show phase breakdown if available
+            if (Object.keys(phases).length > 0) {
+                perfHtml += '<div style="margin-top: 10px;"><strong>Phase Breakdown:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">';
+                for (const [phase, time] of Object.entries(phases)) {
+                    if (time > 0) {
+                        const phaseName = phase.replace(/([A-Z])/g, ' $1').trim();
+                        perfHtml += `<li>${phaseName}: ${(time / 1000).toFixed(2)}s</li>`;
+                    }
+                }
+                perfHtml += '</ul></div>';
+            }
+            
+            this.imageZoomPerformance.innerHTML = perfHtml;
+            this.imageZoomPerformanceSection.style.display = 'block';
+        } else {
+            this.imageZoomPerformanceSection.style.display = 'none';
+        }
+        
+        // Show modal
+        this.imageZoomModal.classList.add('active');
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+    }
+    
+    /**
+     * Hide image zoom modal
+     */
+    hideImageZoomModal() {
+        if (this.imageZoomModal) {
+            this.imageZoomModal.classList.remove('active');
+            // Restore body scroll
+            document.body.style.overflow = '';
+        }
+    }
+    
     showTrainingStats() {
         if (!this.recognizer || !this.recognizer.nameMatcher) {
             alert('Card matcher not initialized. Please process some images first.');
@@ -986,8 +1142,12 @@ class MTGApp {
         
         // Show progress
         this.progressSection.classList.remove('hidden');
-        this.resultsSection.classList.add('hidden');
+        this.resultsSection.classList.remove('hidden'); // Show results section early
         this.processBtn.disabled = true;
+        
+        // Reset results and display
+        this.results = [];
+        this.clearResultsDisplay();
         
         // Reset training stats for new batch
         if (this.recognizer && this.recognizer.nameMatcher) {
@@ -1005,7 +1165,6 @@ class MTGApp {
         }
         
         // Process images in parallel - First pass
-        this.results = [];
         const total = this.uploadedFiles.length;
         let completed = 0;
         
@@ -1045,15 +1204,33 @@ class MTGApp {
             );
             
             const batchResults = await Promise.all(batchPromises);
-            this.results.push(...batchResults);
+            
+            // Add results and update display incrementally
+            for (const result of batchResults) {
+                const { index, ...rest } = result;
+                this.results.push(rest);
+                // Update display for this result
+                this.addResultToDisplay(rest);
+            }
         }
         
         // Sort results by original index to maintain file order
-        this.results.sort((a, b) => a.index - b.index);
-        this.results = this.results.map(r => {
-            const { index, ...rest } = r;
-            return rest;
+        this.results.sort((a, b) => {
+            const indexA = this.uploadedFiles.indexOf(a.file);
+            const indexB = this.uploadedFiles.indexOf(b.file);
+            return indexA - indexB;
         });
+        
+        // Store start times for retry passes to calculate total time correctly
+        const retryStartTimes = new Map();
+        this.results.forEach(result => {
+            if (result.performance) {
+                retryStartTimes.set(result.file, result.performance.startTime || performance.now());
+            }
+        });
+        
+        // Re-display all results in correct order
+        this.displayResults();
         
         // Second pass: Retry unidentified cards with black border detection (in parallel)
         const unidentified = this.results.filter(r => !r.identified);
@@ -1068,8 +1245,15 @@ class MTGApp {
                     // Load the image again for black border detection
                     const image = await this.loadImageFromFile(result.file);
                     
-                    // Retry with black border detection
-                    const retryResult = await this.recognizer.retryWithBlackBorder(image);
+                    // Get or create performance metrics to pass to retry
+                    const perfMetrics = result.performance || { 
+                        phases: {}, 
+                        retryCount: 0,
+                        startTime: retryStartTimes.get(result.file) || performance.now()
+                    };
+                    
+                    // Retry with black border detection (this will update perfMetrics)
+                    const retryResult = await this.recognizer.retryWithBlackBorder(image, perfMetrics);
                     
                     retryCompleted++;
                     this.updateProgress(90 + (retryCompleted / unidentified.length) * 10, 
@@ -1077,7 +1261,8 @@ class MTGApp {
                     
                     return {
                         file: result.file,
-                        retryResult: retryResult
+                        retryResult: retryResult,
+                        perfMetrics: perfMetrics // Return updated metrics
                     };
                 } catch (error) {
                     console.error(`Error in black border retry for ${result.file?.name}:`, error);
@@ -1086,7 +1271,8 @@ class MTGApp {
                         `Retrying ${retryCompleted} of ${unidentified.length} with black border detection...`);
                     return {
                         file: result.file,
-                        retryResult: null
+                        retryResult: null,
+                        perfMetrics: result.performance
                     };
                 }
             };
@@ -1097,24 +1283,34 @@ class MTGApp {
                 const batchPromises = batch.map(result => retryFile(result));
                 const batchResults = await Promise.all(batchPromises);
                 
-                // Update results
-                for (const { file, retryResult } of batchResults) {
-                    if (retryResult) {
+                // Update results and display incrementally
+                for (const { file, retryResult, perfMetrics } of batchResults) {
+                    if (retryResult && perfMetrics) {
                         const index = this.results.findIndex(r => r.file === file);
                         if (index >= 0) {
+                            // Update total time in performance metrics based on start time
+                            if (retryStartTimes.has(file)) {
+                                const startTime = retryStartTimes.get(file);
+                                perfMetrics.totalTime = performance.now() - startTime;
+                            }
+                            
                             if (retryResult.identified) {
                                 this.results[index] = {
                                     file: file,
-                                    ...retryResult
+                                    ...retryResult,
+                                    performance: perfMetrics // Preserve and update performance metrics
                                 };
                                 console.log(`Black border retry successful for ${file.name}: ${retryResult.cardName}`);
                             } else {
                                 this.results[index] = {
                                     ...this.results[index],
                                     ...retryResult,
-                                    blackBorderRetry: true
+                                    blackBorderRetry: true,
+                                    performance: perfMetrics // Preserve and update performance metrics
                                 };
                             }
+                            // Update display for this updated result
+                            this.updateResultInDisplay(this.results[index], index);
                         }
                     }
                 }
@@ -1134,8 +1330,15 @@ class MTGApp {
                     // Load the image again for third pass
                     const image = await this.loadImageFromFile(result.file);
                     
-                    // Third pass: Try with alternative detection strategy
-                    const thirdPassResult = await this.recognizer.retryWithAlternativeDetection(image);
+                    // Get or create performance metrics to pass to retry
+                    const perfMetrics = result.performance || { 
+                        phases: {}, 
+                        retryCount: 0,
+                        startTime: retryStartTimes.get(result.file) || performance.now()
+                    };
+                    
+                    // Third pass: Try with alternative detection strategy (this will update perfMetrics)
+                    const thirdPassResult = await this.recognizer.retryWithAlternativeDetection(image, perfMetrics);
                     
                     thirdPassCompleted++;
                     this.updateProgress(95 + (thirdPassCompleted / stillUnidentified.length) * 5, 
@@ -1143,7 +1346,8 @@ class MTGApp {
                     
                     return {
                         file: result.file,
-                        thirdPassResult: thirdPassResult
+                        thirdPassResult: thirdPassResult,
+                        perfMetrics: perfMetrics // Return updated metrics
                     };
                 } catch (error) {
                     console.error(`Error in third pass for ${result.file?.name}:`, error);
@@ -1152,7 +1356,8 @@ class MTGApp {
                         `Third pass: ${thirdPassCompleted} of ${stillUnidentified.length}...`);
                     return {
                         file: result.file,
-                        thirdPassResult: null
+                        thirdPassResult: null,
+                        perfMetrics: result.performance
                     };
                 }
             };
@@ -1163,24 +1368,34 @@ class MTGApp {
                 const batchPromises = batch.map(result => thirdPassRetry(result));
                 const batchResults = await Promise.all(batchPromises);
                 
-                // Update results
-                for (const { file, thirdPassResult } of batchResults) {
-                    if (thirdPassResult) {
+                // Update results and display incrementally
+                for (const { file, thirdPassResult, perfMetrics } of batchResults) {
+                    if (thirdPassResult && perfMetrics) {
                         const index = this.results.findIndex(r => r.file === file);
                         if (index >= 0) {
+                            // Update total time in performance metrics based on start time
+                            if (retryStartTimes.has(file)) {
+                                const startTime = retryStartTimes.get(file);
+                                perfMetrics.totalTime = performance.now() - startTime;
+                            }
+                            
                             if (thirdPassResult.identified) {
                                 this.results[index] = {
                                     file: file,
-                                    ...thirdPassResult
+                                    ...thirdPassResult,
+                                    performance: perfMetrics // Preserve and update performance metrics
                                 };
                                 console.log(`Third pass successful for ${file.name}: ${thirdPassResult.cardName}`);
                             } else {
                                 this.results[index] = {
                                     ...this.results[index],
                                     ...thirdPassResult,
-                                    thirdPassRetry: true
+                                    thirdPassRetry: true,
+                                    performance: perfMetrics // Preserve and update performance metrics
                                 };
                             }
+                            // Update display for this updated result
+                            this.updateResultInDisplay(this.results[index], index);
                         }
                     }
                 }
@@ -1190,10 +1405,9 @@ class MTGApp {
         this.updateProgress(100, 'Card name extraction complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Display results
+        // Final display update to ensure everything is in correct order
         this.displayResults();
         this.progressSection.classList.add('hidden');
-        this.resultsSection.classList.remove('hidden');
         this.processBtn.disabled = false;
     }
 
@@ -1209,6 +1423,192 @@ class MTGApp {
     updateProgress(percentage, text) {
         this.progressFill.style.width = `${percentage}%`;
         this.progressText.textContent = text;
+    }
+
+    /**
+     * Clear all results display
+     */
+    clearResultsDisplay() {
+        // Clear grids
+        this.inWantlistGrid.innerHTML = '';
+        this.inBothGrid.innerHTML = '';
+        this.wantedGrid.innerHTML = '';
+        this.ownedGrid.innerHTML = '';
+        this.unidentifiedGrid.innerHTML = '';
+        
+        // Reset counts
+        this.inWantlistCount.textContent = '0';
+        this.inBothCount.textContent = '0';
+        this.wantedCount.textContent = '0';
+        this.ownedCount.textContent = '0';
+        this.unidentifiedCount.textContent = '0';
+    }
+
+    /**
+     * Categorize a single result
+     */
+    categorizeResult(result) {
+        if (result.identified && result.cardName) {
+            const isWanted = this.isCardWanted(result.cardName);
+            const isOwned = this.isCardOwned(result.cardName);
+            
+            if (isWanted && isOwned) {
+                return 'inBoth';
+            } else if (isWanted) {
+                return 'inWantlist';
+            } else if (isOwned) {
+                return 'owned';
+            } else {
+                return 'wanted';
+            }
+        } else {
+            return 'unidentified';
+        }
+    }
+
+    /**
+     * Add a single result to the display incrementally
+     */
+    addResultToDisplay(result) {
+        const category = this.categorizeResult(result);
+        const grid = this.getGridForCategory(category);
+        
+        // Remove empty state message if present
+        const emptyState = grid.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        // Create and add the card element
+        const isUnidentified = category === 'unidentified';
+        const showWantlistInfo = category === 'inWantlist' || category === 'inBoth';
+        const isAlsoInInventory = category === 'inBoth';
+        this.createCardElement(result, grid, isUnidentified, showWantlistInfo, isAlsoInInventory);
+        
+        // Update counts
+        this.updateCounts();
+    }
+
+    /**
+     * Update an existing result in the display (for retry passes)
+     */
+    updateResultInDisplay(result, resultIndex) {
+        // Find and remove the old element if it exists
+        // We'll do a full re-render of this result's category for simplicity
+        // A more efficient approach would track element IDs, but this is simpler
+        
+        // Remove from all grids (in case category changed)
+        const allGrids = [
+            this.inWantlistGrid,
+            this.inBothGrid,
+            this.wantedGrid,
+            this.ownedGrid,
+            this.unidentifiedGrid
+        ];
+        
+        allGrids.forEach(grid => {
+            const cards = grid.querySelectorAll('.card-item');
+            cards.forEach(card => {
+                const img = card.querySelector('img');
+                if (img && (img.src.includes(result.file?.name) || 
+                           (result.fileName && img.alt === result.fileName))) {
+                    card.remove();
+                }
+            });
+        });
+        
+        // Add to correct category
+        this.addResultToDisplay(result);
+    }
+
+    /**
+     * Get the grid element for a category
+     */
+    getGridForCategory(category) {
+        switch (category) {
+            case 'inWantlist':
+                return this.inWantlistGrid;
+            case 'inBoth':
+                return this.inBothGrid;
+            case 'wanted':
+                return this.wantedGrid;
+            case 'owned':
+                return this.ownedGrid;
+            case 'unidentified':
+                return this.unidentifiedGrid;
+            default:
+                return this.unidentifiedGrid;
+        }
+    }
+
+    /**
+     * Calculate compute intensity based on performance metrics
+     */
+    calculateComputeIntensity(performance) {
+        if (!performance) {
+            return { label: 'Low', color: '#28a745', score: 0 };
+        }
+        
+        const totalTime = performance.totalTime || 0;
+        const retryCount = performance.retryCount || 0;
+        const phases = performance.phases || {};
+        
+        // Calculate a score based on:
+        // - Total time (weight: 40%)
+        // - Number of retries (weight: 30%)
+        // - Number of processing phases (weight: 30%)
+        const timeScore = Math.min(totalTime / 5000, 1) * 0.4; // Normalize to 5 seconds max
+        const retryScore = Math.min(retryCount / 3, 1) * 0.3; // Normalize to 3 retries max
+        const phaseScore = Math.min(Object.keys(phases).length / 8, 1) * 0.3; // Normalize to 8 phases max
+        
+        const totalScore = timeScore + retryScore + phaseScore;
+        
+        if (totalScore < 0.3) {
+            return { label: 'Low', color: '#28a745', score: totalScore };
+        } else if (totalScore < 0.6) {
+            return { label: 'Medium', color: '#ff9800', score: totalScore };
+        } else {
+            return { label: 'High', color: '#dc3545', score: totalScore };
+        }
+    }
+
+    /**
+     * Update all count displays
+     */
+    updateCounts() {
+        const inWantlist = [];
+        const inBoth = [];
+        const wanted = [];
+        const owned = [];
+        const unidentified = [];
+        
+        this.results.forEach(result => {
+            const category = this.categorizeResult(result);
+            switch (category) {
+                case 'inWantlist':
+                    inWantlist.push(result);
+                    break;
+                case 'inBoth':
+                    inBoth.push(result);
+                    break;
+                case 'wanted':
+                    wanted.push(result);
+                    break;
+                case 'owned':
+                    owned.push(result);
+                    break;
+                case 'unidentified':
+                    unidentified.push(result);
+                    break;
+            }
+        });
+        
+        // Update count displays
+        this.inWantlistCount.textContent = inWantlist.length;
+        this.inBothCount.textContent = inBoth.length;
+        this.wantedCount.textContent = wanted.length;
+        this.ownedCount.textContent = owned.length;
+        this.unidentifiedCount.textContent = unidentified.length;
     }
 
     displayResults() {
@@ -1319,9 +1719,19 @@ class MTGApp {
         }
         
         img.alt = result.fileName || result.file?.name || 'Card image';
+        img.title = 'Click to zoom and view OCR details';
         img.onerror = function() {
             this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#ccc"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999">Image not available</text></svg>';
         };
+        
+        // Add click handler for zoom modal - store result reference
+        img.addEventListener('click', () => {
+            this.showImageZoomModal(result);
+        });
+        
+        // Store a reference to the result for easy access (using data attribute with file name as unique ID)
+        const uniqueId = result.fileName || result.file?.name || `result_${Date.now()}_${Math.random()}`;
+        img.dataset.resultId = uniqueId;
         
         const infoDiv = document.createElement('div');
         infoDiv.className = 'card-info';
@@ -1341,6 +1751,27 @@ class MTGApp {
             confidenceDiv.textContent = `Error: ${result.error}`;
         } else {
             confidenceDiv.textContent = 'Could not identify';
+        }
+        
+        // Add performance/compute metrics
+        if (result.performance) {
+            const perfDiv = document.createElement('div');
+            perfDiv.className = 'card-performance';
+            perfDiv.style.cssText = 'margin-top: 5px; font-size: 0.8em; color: #666;';
+            
+            const totalTime = result.performance.totalTime || 0;
+            const retryCount = result.performance.retryCount || 0;
+            const computeIntensity = this.calculateComputeIntensity(result.performance);
+            
+            perfDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>⏱️ ${(totalTime / 1000).toFixed(1)}s</span>
+                    ${retryCount > 0 ? `<span style="color: #ff9800;">🔄 ${retryCount} retry${retryCount > 1 ? 'ies' : ''}</span>` : ''}
+                    <span style="color: ${computeIntensity.color}; font-weight: bold;">${computeIntensity.label}</span>
+                </div>
+            `;
+            
+            infoDiv.appendChild(perfDiv);
         }
 
         // Show wantlist information if requested
