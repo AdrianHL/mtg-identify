@@ -127,7 +127,13 @@ class MTGApp {
         
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+            btn.addEventListener('click', (e) => {
+                // Use currentTarget to get the button, not the clicked child element (like span)
+                const tabName = e.currentTarget.dataset.tab;
+                if (tabName) {
+                    this.switchTab(tabName);
+                }
+            });
         });
         
         // Download buttons
@@ -2065,6 +2071,18 @@ class MTGApp {
     }
 
     switchTab(tabName) {
+        // Validate tab name
+        if (!tabName) {
+            console.warn('switchTab called with invalid tabName:', tabName);
+            return;
+        }
+        
+        const validTabs = ['inWantlist', 'inBoth', 'wanted', 'owned', 'unidentified'];
+        if (!validTabs.includes(tabName)) {
+            console.warn('switchTab called with unknown tabName:', tabName);
+            return;
+        }
+        
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabName);
