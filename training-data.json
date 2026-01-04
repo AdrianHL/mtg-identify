@@ -11,9 +11,85 @@
       "ocrText": "i Ce | olla % T A ba",
       "expectedCardName": "Evercoat Ursine",
       "notes": "Heavily corrupted OCR text"
+    },
+    {
+      "imageName": "2025-10-24 21.42.05.jpg",
+      "ocrText": "Eu niscion\n_ TON AE Te RT\n| BENNER ABH Ll (7 4\n| STARRY DRY ns 7 A\n1 TERN <i\n",
+      "expectedCardName": "Illumination",
+      "notes": "Corrected from: In Garruk's Wake"
+    },
+    {
+      "imageName": "2025-10-31 07.33.47.jpg",
+      "ocrText": "privy ;\nst Yu /\n; ot hdl,\n",
+      "expectedCardName": "Tunnel Vision",
+      "notes": "Corrected from: Plague Stinger"
+    },
+    {
+      "imageName": "2024-09-29 10.38.08.jpg",
+      "ocrText": "| >) Path of Mettle | =)\nNW 3\n",
+      "expectedCardName": "Path of Mettle",
+      "notes": "Corrected from: Path of Discovery"
+    },
+    {
+      "imageName": "2024-10-02 09.58.14.jpg",
+      "ocrText": "Dye Yresegive 2\n",
+      "expectedCardName": "Divine Presence",
+      "notes": "Corrected from: Vat Emergence"
+    },
+    {
+      "imageName": "2025-06-03 18.32.59.jpg",
+      "ocrText": "5 \"BB ( Ardbert, Warrior of Darkness 1 ¥& MN & k\nWAAR baa yr 3\n",
+      "expectedCardName": "Ardbert, Warrior of Darkness",
+      "notes": "Corrected from: Darkness"
+    },
+    {
+      "imageName": "2025-02-15 13.49.45.jpg",
+      "ocrText": "HAPPY/ANNI : ( Delayed Bla\n> | eR [ANNIVERSARY] I\nJ (l\n",
+      "expectedCardName": "Delayed Blast Fireball",
+      "notes": "Corrected from: Delay"
+    },
+    {
+      "imageName": "2025-04-05 13.53.09.jpg",
+      "ocrText": "— Stewa\n. - 1 SPECS )\n-— 3 AT THE 8\n3 . - i N END! 3\n",
+      "expectedCardName": "Steward of the Harvest",
+      "notes": "Corrected from: Solemn Simulacrum"
+    },
+    {
+      "imageName": "2025-06-28 15.02.52.jpg",
+      "ocrText": ": : r No\n] ol - . \\ 3 .\n. . A Cir\n. - Lo ev :\n: . Re. :\n. ° or\n",
+      "expectedCardName": "Kismet",
+      "notes": "Corrected from: Carrion Locust"
+    },
+    {
+      "imageName": "2025-11-28 17.56.22.jpg",
+      "ocrText": ". . . .\nRE — x = -\nMizzix of the lzmagnus 2.¢.& | .\n\nAE, .\n",
+      "expectedCardName": "Mizzix of the lzmagnus",
+      "notes": "Corrected from: X"
+    },
+    {
+      "imageName": "2025-11-28 17.59.37.jpg",
+      "ocrText": "Eee ©\nKumena, Tyrant of Orazca\n",
+      "expectedCardName": "Kumena, Tyrant of Orazca",
+      "notes": "Corrected from: Tyrant of Valakut"
+    },
+    {
+      "imageName": "2025-11-30 10.27.26.jpg",
+      "ocrText": "PE TEN \\ <9]\n(Gran-Gran______________&N\nToo MeN TE\nN° - :\n-—t—. | fe | PE\n",
+      "expectedCardName": "Gran-Gran",
+      "notes": "Corrected from: Thunderherd Migration"
+    },
+    {
+      "imageName": "2025-08-05 06.29.02.jpg",
+      "ocrText": "gd Er 2 { Rude Awaker\n\nN E RJ > > = 2 I ‘\n\n=, 1B a? H px 1 LL |\niB Set ‘Rn 1 pan TRL Pa\n",
+      "expectedCardName": "Rude Awakening",
+      "notes": "Corrected from: It That Betrays"
+    },
+    {
+      "imageName": "2025-08-16 10.59.48.jpg",
+      "ocrText": "BY EOHREC hy’\n Emereency Eject 2\n",
+      "expectedCardName": "Emergency Eject",
+      "notes": "Corrected from: Eject"
     }
   ],
   "instructions": "Add your test cases here. The system will use these to improve matching accuracy."
 }
-
-
