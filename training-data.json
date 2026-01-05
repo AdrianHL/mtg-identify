@@ -89,6 +89,18 @@
       "ocrText": "BY EOHREC hy’\n Emereency Eject 2\n",
       "expectedCardName": "Emergency Eject",
       "notes": "Corrected from: Eject"
+    },
+    {
+      "imageName": "2025-12-07 19.33.08.jpg",
+      "ocrText": "' ” bis i Bl Chameleon, Master of Disguise 3 D) .\ni - pg 5 Ae A [~——o ps :\n",
+      "expectedCardName": "Chameleon, Master of Disguise",
+      "notes": "Corrected from: Harvester of Souls"
+    },
+    {
+      "imageName": "2025-12-13 21.03.56.jpg",
+      "ocrText": "\\ TENSES ty a\nry Maha, [ts Feathers Night 322N\nrl: =\nE rr he Ny wy, A : -\n",
+      "expectedCardName": "Maha, Its Feathers Night",
+      "notes": "Corrected from: Feather"
     }
   ],
   "instructions": "Add your test cases here. The system will use these to improve matching accuracy."
