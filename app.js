@@ -1725,7 +1725,8 @@ class MTGApp {
         }
         
         img.alt = result.fileName || result.file?.name || 'Card image';
-        img.title = 'Click to zoom and view OCR details';
+        const fileName = result.fileName || result.file?.name || 'Unknown file';
+        img.title = `${fileName}\nClick to zoom and view OCR details`;
         img.onerror = function() {
             this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#ccc"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#999">Image not available</text></svg>';
         };
